@@ -1,4 +1,5 @@
 mod constants;
+mod offsets;
 
 use mem_rs::prelude::*;
 use crate::memory::ds1::constants::*;
@@ -6,34 +7,7 @@ use crate::memory::ds1::constants::*;
 #[allow(dead_code)]
 pub struct Ds1
 {
-    pos_lock_aob: String,
-    pos_lock_1_aob_offset: usize,
-    pos_lock_2_aob_offset: usize,
-
-    node_graph_aob: String,
-    node_graph_aob_offset: usize,
-
-    all_no_magic_qty_consume_aob: String,
-    all_no_magic_qty_consume_aob_offset: usize,
-
-    player_no_dead_aob: String,
-    player_no_dead_aob_offset: usize,
-
-    player_exterminate_aob: String,
-    player_exterminate_aob_offset: usize,
-
-    all_no_stamina_consume_aob: String,
-    all_no_stamina_consume_aob_offset: usize,
-
-    //Skipped draw compass for now
-    draw_map_aob: String,
-    draw_map_aob_offset: usize,
-
-    char_data_1_aob: String,
-    char_data_1_aob_offset: usize,
-    char_data_1_offset1: usize,
-    char_data_1_offset2: usize,
-    char_data_1_offset3: usize,
+    
 
     process: SendProcess,
     chr_dbg: SendPointer,
@@ -66,33 +40,7 @@ impl Ds1 {
         hudhook::alloc_console().ok();
         let mut ds1struct = Ds1 {
 
-            pos_lock_aob: "F3 0F 11 44 24 08 F3 0F 11 0C 24 F3 0F 11 54 24 04 F3 0F 7E 04 24".to_string(),
-            pos_lock_1_aob_offset: 0x16,
-            pos_lock_2_aob_offset: 0x27,
-
-            node_graph_aob: "8B 4C 24 5C 8B 11 50 8B 42 34 FF D0 80 BB 90 00 00 00 ?".to_string(),
-            node_graph_aob_offset: 0x12,
-
-            all_no_magic_qty_consume_aob: "38 1D ? ? ? ? 0F 94 C1 3A CB".to_string(),
-            all_no_magic_qty_consume_aob_offset: 0x2,
-
-            player_no_dead_aob: "53 56 8B F0 8A 9E C4 03 00 00 8B 06 8B 90 A4 00 00 00 C0 EB 05 8B CE 80 E3 01 FF D2 84 C0 ? ? 80 3D ? ? ? ? 00".to_string(),
-            player_no_dead_aob_offset: 0x22,
-
-            player_exterminate_aob: "8B 11 8B 82 A4 00 00 00 FF D0 84 C0 ? ? 80 3D ? ? ? ? 00".to_string(),
-            player_exterminate_aob_offset: 0x10,
-
-            all_no_stamina_consume_aob: "51 8B 4C 24 08 3B 8A E4 02 00 00 ? ? F6 82 C5 03 00 00 04 ? ? 80 3D ? ? ? ? 00".to_string(),
-            all_no_stamina_consume_aob_offset: 0x18,
-
-            draw_map_aob : "80 3D ? ? ? ? 00 A1 ? ? ? ? 8B 48 08 8B 11 56 8B 72 28 B8 00 00 00 80".to_string(),
-            draw_map_aob_offset: 0x2,
-
-            char_data_1_aob : "8B 15 ? ? ? ? F3 0F 10 44 24 30 52".to_string(),
-            char_data_1_aob_offset : 0x2,
-            char_data_1_offset1 : 0x0,
-            char_data_1_offset2 : 0x4,
-            char_data_1_offset3 : 0x0,
+            
 
             process: SendProcess(Process::new("DARKSOULS.exe")),
             chr_dbg: SendPointer(Pointer::default()),
@@ -125,43 +73,43 @@ impl Ds1 {
             )?);
             self.chr_dbg = SendPointer(self.process.0.scan_abs(
                 "all_no_stamina_consume",
-                &self.all_no_stamina_consume_aob,
-                self.all_no_stamina_consume_aob_offset,
+                &offsets::all_no_stamina_consume_aob,
+                offsets::all_no_stamina_consume_aob_offset,
                 vec![0x0],
             )?);
 
             self.chr_data_1 = SendPointer(self.process.0.scan_abs(
                 "chr_data_1",
-                &self.char_data_1_aob,
-                self.char_data_1_aob_offset,
+                &offsets::char_data_1_aob,
+                offsets::char_data_1_aob_offset,
                 vec![
-                    self.char_data_1_offset1,
-                    self.char_data_1_offset2,
-                    self.char_data_1_offset3,
+                    offsets::char_data_1_offset1,
+                    offsets::char_data_1_offset2,
+                    offsets::char_data_1_offset3,
                 ],
             )?);
 
             self.char_map_data = SendPointer(self.process.0.scan_abs(
                 "chr_map_data",
-                &self.char_data_1_aob,
-                self.char_data_1_aob_offset,
+                &offsets::char_data_1_aob,
+                offsets::char_data_1_aob_offset,
                 vec![
-                    self.char_data_1_offset1,
-                    self.char_data_1_offset2,
-                    self.char_data_1_offset3,
+                    offsets::char_data_1_offset1,
+                    offsets::char_data_1_offset2,
+                    offsets::char_data_1_offset3,
                     CharData1::CHAR_MAP_DATA_PTR,
                 ],
             )?);
 
             self.char_pos_data = SendPointer(self.process.0.scan_abs(
                 "chr_pos_data",
-                &self.char_data_1_aob,
-                self.char_data_1_aob_offset,
+                &offsets::char_data_1_aob,
+                offsets::char_data_1_aob_offset,
                 vec![
                     0x0,
-                    self.char_data_1_offset1,
-                    self.char_data_1_offset2,
-                    self.char_data_1_offset3,
+                    offsets::char_data_1_offset1,
+                    offsets::char_data_1_offset2,
+                    offsets::char_data_1_offset3,
                     CharData1::CHAR_MAP_DATA_PTR,
                     CharMapData::CHAR_POS_DATA_PTR,
                 ],
