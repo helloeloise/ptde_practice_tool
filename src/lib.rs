@@ -1,3 +1,5 @@
+#![allow(static_mut_refs)]
+
 use hudhook::*;
 use hudhook::hooks::dx9::ImguiDx9Hooks;
 use crate::render_loop::RenderLoop;

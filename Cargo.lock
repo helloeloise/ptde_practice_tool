@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "hudhook",
  "imgui",
+ "lazy_static",
  "mem-rs",
  "tracing-subscriber",
 ]
