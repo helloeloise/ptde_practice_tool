@@ -1,9 +1,7 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::{Arc, LazyLock, Mutex};
+
+use std::sync::{Arc, Mutex};
 use hudhook::ImguiRenderLoop;
 use imgui::Condition;
-use lazy_static::lazy_static;
 use crate::memory::Ds1;
 
 static mut DS1: Option<Arc<Mutex<Ds1>>> = None;
