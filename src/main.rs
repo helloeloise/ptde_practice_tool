@@ -11,7 +11,7 @@ fn main() {
     Process::by_name("DARKSOULS.exe")
         .unwrap()
         .inject(
-            "/home/eloise/Documents/Ptdetest/target/i686-pc-windows-msvc/release/hello_hud.dll"
+            cur_dll
                 .into(),
         )
         .unwrap();
