@@ -22,6 +22,9 @@ pub struct RenderLoop
 {
     no_stamina_consume: bool,
     no_update_ai: bool,
+    x_stored_pos: f32,
+    y_stored_pos: f32,
+    z_stored_pos: f32,
 }
 
 impl RenderLoop
@@ -32,6 +35,9 @@ impl RenderLoop
         {
             no_stamina_consume: false,
             no_update_ai: false,
+            x_stored_pos : 0.,
+            y_stored_pos: 0.,
+            z_stored_pos: 0.,
         }
     }
 }
@@ -53,9 +59,24 @@ impl ImguiRenderLoop for RenderLoop
                 ui.text(format!("Pos Y {:?}", ds1.get_y_pos()));
                 ui.text(format!("Pos Z {:?}", ds1.get_z_pos()));
 
+                ui.text(format!("Stored Pos X {:?}", self.x_stored_pos));
+                ui.text(format!("Stored Pos Y {:?}", self.y_stored_pos));
+                ui.text(format!("Stored Pos Z {:?}", self.z_stored_pos));
+
                 if ui.button("Eject") {
                     print!("test");
                     hudhook::eject();
+                }
+
+                if ui.button("Store player position")
+                {
+                    self.x_stored_pos = ds1.get_x_pos();
+                    self.y_stored_pos = ds1.get_y_pos();
+                    self.z_stored_pos = ds1.get_z_pos();
+                }
+
+                if ui.button("Teleport player") {
+                    ds1.teleport_player(self.x_stored_pos, self.y_stored_pos, self.z_stored_pos);
                 }
 
                 if ui.checkbox("inf stam", &mut self.no_stamina_consume)
@@ -67,6 +88,8 @@ impl ImguiRenderLoop for RenderLoop
                 {
                     ds1.set_no_update_ai();
                 }
+
+
             });
     }
 }

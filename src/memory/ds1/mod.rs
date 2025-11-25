@@ -69,39 +69,23 @@ impl Ds1 {
                 &offsets::CHAR_DATA_1_AOB,
                 offsets::CHAR_DATA_1_AOB_OFFSET,
                 vec![
-                    offsets::CHAR_DATA_1_OFFSET1,
-                    offsets::CHAR_DATA_1_OFFSET2,
-                    offsets::CHAR_DATA_1_OFFSET3,
-                ],
-            )?;
-
-            self.char_map_data = self.process.scan_abs(
-                "chr_map_data",
-                &offsets::CHAR_DATA_1_AOB,
-                offsets::CHAR_DATA_1_AOB_OFFSET,
-                vec![
-                    offsets::CHAR_DATA_1_OFFSET1,
-                    offsets::CHAR_DATA_1_OFFSET2,
-                    offsets::CHAR_DATA_1_OFFSET3,
-                    CharData1::CHAR_MAP_DATA_PTR,
-                ],
-            )?;
-
-            self.char_pos_data = self.process.scan_abs(
-                "chr_pos_data",
-                &offsets::CHAR_DATA_1_AOB,
-                offsets::CHAR_DATA_1_AOB_OFFSET,
-                vec![
                     0x0,
                     offsets::CHAR_DATA_1_OFFSET1,
                     offsets::CHAR_DATA_1_OFFSET2,
                     offsets::CHAR_DATA_1_OFFSET3,
-                    CharData1::CHAR_MAP_DATA_PTR,
-                    CharMapData::CHAR_POS_DATA_PTR,
                 ],
             )?;
+         
 
+        
+
+            self.char_map_data = self.chr_data_1.clone();
+            self.char_map_data.offsets.push(CharData1::CHAR_MAP_DATA_PTR);
+
+            self.char_pos_data = self.char_map_data.clone();
+            self.char_pos_data.offsets.push(CharMapData::CHAR_POS_DATA_PTR);
             self.char_pos_data.debug = true;
+
         } else {
             self.process.refresh()?;
         }
@@ -167,5 +151,12 @@ impl Ds1 {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_UPDATE_AI), 0x0);
         }
         no_update_ai
+    }
+
+    pub fn teleport_player(&mut self, x:f32, y:f32, z:f32)
+    {
+        self.char_pos_data.write_f32_rel(Some(CharPosData::POS_X), x);
+        self.char_pos_data.write_f32_rel(Some(CharPosData::POS_Y), y);
+        self.char_pos_data.write_f32_rel(Some(CharPosData::POS_Z), z);
     }
 }
