@@ -16,5 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build --target=i686-pc-windows-msvc
-      run: cargo build --verbose
+    - name: build launcher
+      run: cargo build --target=i686-pc-windows-msvc --verbose
+
+    - name: build dll
+      run: cargo build --lib --target=i686-pc-windows-msvc --verbose
