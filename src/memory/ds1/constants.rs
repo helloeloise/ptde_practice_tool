@@ -72,4 +72,18 @@ impl CharPosData {
     pub const POS_Z: usize = 0x18;
 }
 
+pub struct CharData2;
 
+#[allow(dead_code)]
+impl CharData2 {
+
+    pub const HP: usize = 0xC;
+    pub const STAMINA: usize = 0x28;
+    pub const VITALITY: usize = 0x38;
+    pub const ATTUNEMENT: usize = 0x40;
+    pub const ENDURANCE: usize = 0x48;
+    pub const STRENGTH: usize = 0x50;
+    pub const DEXTERITY: usize = 0x58;
+    pub const INTELLIGENCE: usize = 0x60;
+    pub const FAITH: usize = 0x68;
+}
