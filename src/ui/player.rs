@@ -3,6 +3,7 @@ use crate::memory::{Ds1, ds1};
 use crate::memory::offsets;
 use crate::memory::constants;
 
+
 use mem_rs::prelude::*;
 pub struct Player {
     pub x_stored_pos: f32,
@@ -13,16 +14,16 @@ pub struct Player {
     pub y_pos: f32,
     pub z_pos: f32,
 
-    pub hp: u32,
-    pub stamina: u32,
+    pub hp: i32,
+    pub stamina: i32,
 
-    pub vitality: u32,
-    pub attunement: u32,
-    pub endurance: u32,
-    pub strength: u32,
-    pub dexterity: u32,
-    pub intelligence: u32,
-    pub faith: u32,
+    pub vitality: i32,
+    pub attunement: i32,
+    pub endurance: i32,
+    pub strength: i32,
+    pub dexterity: i32,
+    pub intelligence: i32,
+    pub faith: i32,
 }
 
 impl Player {
@@ -56,14 +57,40 @@ impl Player {
         self.z_pos = ds1.get_z_pos();
 
 
-        self.vitality = ds1.chr_data_2.read_u32_rel(Some(CharData2::VITALITY));
-        self.attunement = ds1.chr_data_2.read_u32_rel(Some(CharData2::ATTUNEMENT));
-        self.endurance = ds1.chr_data_2.read_u32_rel(Some(CharData2::ENDURANCE));
-        self.strength = ds1.chr_data_2.read_u32_rel(Some(CharData2::STRENGTH));
-        self.dexterity = ds1.chr_data_2.read_u32_rel(Some(CharData2::DEXTERITY));
-        self.intelligence = ds1.chr_data_2.read_u32_rel(Some(CharData2::INTELLIGENCE));
-        self.faith = ds1.chr_data_2.read_u32_rel(Some(CharData2::FAITH));
-        self.hp = ds1.chr_data_2.read_u32_rel(Some(CharData2::HP));
-        self.stamina = ds1.chr_data_2.read_u32_rel(Some(CharData2::STAMINA));
+        self.vitality = ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY));
+        self.attunement = ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT));
+        self.endurance = ds1.chr_data_2.read_i32_rel(Some(CharData2::ENDURANCE));
+        self.strength = ds1.chr_data_2.read_i32_rel(Some(CharData2::STRENGTH));
+        self.dexterity = ds1.chr_data_2.read_i32_rel(Some(CharData2::DEXTERITY));
+        self.intelligence = ds1.chr_data_2.read_i32_rel(Some(CharData2::INTELLIGENCE));
+        self.faith = ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH));
+        self.hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::HP));
+        self.stamina = ds1.chr_data_2.read_i32_rel(Some(CharData2::STAMINA));
     }
+
+    pub fn set_player_vitality(&mut self, ds1: &mut Ds1, vitality: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::VITALITY), vitality);
+    }
+
+    pub fn set_player_attunement(&mut self, ds1: &mut Ds1, attunement: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::ATTUNEMENT), attunement);
+    }
+    pub fn set_player_endurance(&mut self, ds1: &mut Ds1, endurance: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::ENDURANCE), endurance);
+    }
+    pub fn set_player_strength(&mut self, ds1: &mut Ds1, strength: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::STRENGTH), strength);
+    }
+    pub fn set_player_dexterity(&mut self, ds1: &mut Ds1, dexterity: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::DEXTERITY), dexterity);
+    }
+    pub fn set_player_intelligence(&mut self, ds1: &mut Ds1, intelligence: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::INTELLIGENCE), intelligence);
+    }
+    pub fn set_player_faith(&mut self, ds1: &mut Ds1, faith: i32) {
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::FAITH), faith);
+    }
+
 }
+
+

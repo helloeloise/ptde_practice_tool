@@ -7,6 +7,8 @@ use crate::ui::Player;
 
 static mut DS1: Option<Arc<Mutex<Ds1>>> = None;
 
+
+
 pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
     unsafe {
         if DS1.is_none() {
@@ -87,14 +89,33 @@ impl ImguiRenderLoop for RenderLoop {
                 if let Some(_popup) = ui.begin_popup("stats_popup") {
         
 
-                    ui.text(format!("Vitality {:?}", player.vitality));
-                    ui.text(format!("Attunement {:?}", player.attunement));
-                    ui.text(format!("Endurance {:?}", player.endurance));
-                    ui.text(format!("Strength {:?}", player.strength));
-                    ui.text(format!("Dexterity {:?}", player.dexterity));          
-                    ui.text(format!("Intelligence {:?}", player.intelligence));
-                    ui.text(format!("Faith {:?}", player.faith));
+                    if (ui.input_int(format!("Vitality {:?}", player.vitality), &mut player.vitality)).build() {
+                        player.set_player_vitality(&mut ds1, player.vitality);
+                    }
+                    if (ui.input_int(format!("Attunement {:?}", player.attunement), &mut player.attunement)).build() {
+                        player.set_player_attunement(&mut ds1, player.attunement);
+                    }
+                    if (ui.input_int(format!("Endurance {:?}", player.endurance), &mut player.endurance)).build() {
+                        player.set_player_endurance(&mut ds1, player.endurance);
+                    }
+                    if (ui.input_int(format!("Strength {:?}", player.strength), &mut player.strength)).build() {
+                        player.set_player_strength(&mut ds1, player.strength);
+                    }
+                    if (ui.input_int(format!("Dexterity {:?}", player.dexterity), &mut player.dexterity)).build() {
+                        player.set_player_dexterity(&mut ds1, player.dexterity);
+                    }
+                    if (ui.input_int(format!("Intelligence {:?}", player.intelligence), &mut player.intelligence)).build() {
+                        player.set_player_intelligence(&mut ds1, player.intelligence);
+                    }
+                    if (ui.input_int(format!("Faith {:?}", player.faith), &mut player.faith)).build() {
+                        player.set_player_faith(&mut ds1, player.faith);
+                    }
+                    
                 }
+
+                
+                
+
             });
     }
 }
