@@ -67,7 +67,9 @@ impl Player {
         self.stamina = ds1.chr_data_2.read_i32_rel(Some(CharData2::STAMINA));
     }
 
-    
+    pub fn moveswap(&mut self, ds1: &mut Ds1){
+        ds1.chr_data_2.write_i64_rel(Some(CharData2::STANCE), 2);
+    }
 
     pub fn set_player_stat(&mut self, ds1: &mut Ds1, stat: usize, value: i32) {
         ds1.chr_data_2.write_i32_rel(Some(stat), value);

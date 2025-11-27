@@ -89,6 +89,7 @@ impl CharData2 {
     pub const SOUL_LEVEL: usize = 0x88;
     pub const SOULS: usize = 0x8C;
     pub const HUMANITY: usize = 0x7C;
+    pub const STANCE: usize = 0x230;
 }
 
 pub struct LevelUp;

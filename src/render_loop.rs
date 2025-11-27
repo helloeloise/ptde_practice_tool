@@ -24,7 +24,6 @@ pub struct RenderLoop {
     y_stored_pos: f32,
     z_stored_pos: f32,
 }
-
 impl RenderLoop {
     pub fn new() -> Self {
         RenderLoop {
@@ -85,6 +84,10 @@ impl ImguiRenderLoop for RenderLoop {
                 if ui.button("Stats") {
                     ui.open_popup("stats_popup");
                 }
+                if (ui.button("Moveswap")) {
+                    player.moveswap(&mut ds1);
+                }
+
                 if let Some(_popup) = ui.begin_popup("stats_popup") {
                     if (ui.input_int(
                         format!("Vitality {:?}", player.vitality),
@@ -143,6 +146,8 @@ impl ImguiRenderLoop for RenderLoop {
                     {
                         player.set_player_stat(&mut ds1, CharData2::FAITH, player.faith);
                     }
+
+                    
                 }
             });
     }
