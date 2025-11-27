@@ -1,9 +1,9 @@
+use crate::memory::constants::{self, LevelUp};
 use crate::memory::constants::CharData2;
-use crate::memory::{Ds1, ds1};
 use crate::memory::offsets;
-use crate::memory::constants;
-
-
+use crate::memory::{Ds1, ds1};
+use std::alloc::{alloc, dealloc, Layout};
+use std::arch::asm;
 use mem_rs::prelude::*;
 pub struct Player {
     pub x_stored_pos: f32,
@@ -39,7 +39,7 @@ impl Player {
 
             hp: 0,
             stamina: 0,
-            
+
             vitality: 0,
             attunement: 0,
             endurance: 0,
@@ -56,7 +56,6 @@ impl Player {
         self.y_pos = ds1.get_y_pos();
         self.z_pos = ds1.get_z_pos();
 
-
         self.vitality = ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY));
         self.attunement = ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT));
         self.endurance = ds1.chr_data_2.read_i32_rel(Some(CharData2::ENDURANCE));
@@ -69,28 +68,215 @@ impl Player {
     }
 
     pub fn set_player_vitality(&mut self, ds1: &mut Ds1, vitality: i32) {
-        ds1.chr_data_2.write_i32_rel(Some(CharData2::VITALITY), vitality);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::VITALITY), vitality);
     }
 
     pub fn set_player_attunement(&mut self, ds1: &mut Ds1, attunement: i32) {
-        ds1.chr_data_2.write_i32_rel(Some(CharData2::ATTUNEMENT), attunement);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::ATTUNEMENT), attunement);
     }
     pub fn set_player_endurance(&mut self, ds1: &mut Ds1, endurance: i32) {
-        ds1.chr_data_2.write_i32_rel(Some(CharData2::ENDURANCE), endurance);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::ENDURANCE), endurance);
     }
     pub fn set_player_strength(&mut self, ds1: &mut Ds1, strength: i32) {
-        ds1.chr_data_2.write_i32_rel(Some(CharData2::STRENGTH), strength);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::STRENGTH), strength);
     }
     pub fn set_player_dexterity(&mut self, ds1: &mut Ds1, dexterity: i32) {
-        ds1.chr_data_2.write_i32_rel(Some(CharData2::DEXTERITY), dexterity);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::DEXTERITY), dexterity);
     }
     pub fn set_player_intelligence(&mut self, ds1: &mut Ds1, intelligence: i32) {
-        ds1.chr_data_2.write_i32_rel(Some(CharData2::INTELLIGENCE), intelligence);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::INTELLIGENCE), intelligence);
     }
     pub fn set_player_faith(&mut self, ds1: &mut Ds1, faith: i32) {
         ds1.chr_data_2.write_i32_rel(Some(CharData2::FAITH), faith);
+        
     }
 
-}
+    pub fn calculate_soul_level(&mut self, ds1: &mut Ds1) -> i32 {
+        let vitality = ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY));
+        let attunement = ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT));
+        let endurance = ds1.chr_data_2.read_i32_rel(Some(CharData2::ENDURANCE));
+        let strength = ds1.chr_data_2.read_i32_rel(Some(CharData2::STRENGTH));
+        let dexterity = ds1.chr_data_2.read_i32_rel(Some(CharData2::DEXTERITY));
+        let intelligence = ds1.chr_data_2.read_i32_rel(Some(CharData2::INTELLIGENCE));
+        let faith = ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH));
 
+        let soul_level = vitality + attunement + endurance + strength + dexterity + intelligence + faith; //Starting level is 3
+
+        ds1.chr_data_2.write_i32_rel(Some(CharData2::SOUL_LEVEL), soul_level);
+
+        soul_level
+    }
+
+    pub fn inject_levelup_function(&mut self, ds1: &mut Ds1) {
+        
+        let stored_humanity = ds1.chr_data_2.read_i32_rel(Some(CharData2::HUMANITY));
+        let level_up_fn_address = ds1.level_up.base_address;
+
+        println!("Level up function address: {:X}", level_up_fn_address);
+        let mut x: i32 = 25;
+        let mut y: i32 = ds1.level_up.base_address as i32;
+        let level_up_codecave: i32 = code_cave as *const () as i32;
+        println!("Ptr address: {:X}", level_up_codecave);
+        print!("Level up codecave address: {:X}", level_up_codecave);
+        ds1.process.write_i32_abs((level_up_codecave + 0x0).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x4).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x8).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::ENDURANCE)));
+        ds1.process.write_i32_abs((level_up_codecave + 0xC).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::STRENGTH)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x10).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::DEXTERITY)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x14).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::RESISTANCE)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x18).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::INTELLIGENCE)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x1C).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x16c).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::SOUL_LEVEL)));
+        ds1.process.write_i32_abs((level_up_codecave + 0x178).try_into().unwrap(), ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS)));    
+        
+       
+
+            unsafe {
+            #[unsafe(no_mangle)]
+            asm!(
+                "mov eax, {x}",
+                "mov ecx, {y}",
+                "call {z}",x = in(reg) level_up_codecave as i32, y = in(reg)level_up_codecave - 328 ,z = in(reg) level_up_fn_address as i32,
+                
+                
+                
+            );
+            }
+         ds1.chr_data_2.write_i32_rel(Some(CharData2::HUMANITY), stored_humanity);
+        }
+        
+        /* 
+
+        unsafe {
+            asm!(
+                "mov eax, {x}",
+                "mov ecx, {x}",
+                "call 0xC75DD0",
+                "ret",
+                x = in(reg) level_up_codecave as i32,
+
+            )
+        }
+        */
+
+    }   
+ 
+
+
+
+
+        
+#[unsafe(no_mangle)]
+pub fn code_cave()
+{
+    unsafe {
+        core::arch::asm!(
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop",
+            "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop", "nop"
+        );
+    }
+}
 

@@ -20,6 +20,7 @@ pub struct Ds1 {
     pub chr_data_2: Pointer,
     pub char_pos_data: Pointer, // 0x1, 0x0, 0x8
     pub no_stam_consume: bool,
+    pub level_up: Pointer,
 }
 
 impl Ds1 {
@@ -39,6 +40,7 @@ impl Ds1 {
             char_map_data: Pointer::default(),
             chr_data_2: Pointer::default(),
             char_pos_data: Pointer::default(),
+            level_up: Pointer::default(),
             no_stam_consume: false,
         };
         let _ = ds1struct.refresh();
@@ -49,7 +51,6 @@ impl Ds1 {
         if !self.process.is_attached() {
             self.process.refresh()?;
 
-            
             self.chr_dbg = self.process.scan_abs(
                 "all_no_stamina_consume",
                 &offsets::ALL_NO_STAMINA_CONSUME_AOB,
@@ -78,8 +79,6 @@ impl Ds1 {
             self.char_pos_data
                 .offsets
                 .push(CharMapData::CHAR_POS_DATA_PTR);
-            self.char_pos_data.debug = true;
-
 
             self.chr_data_2 = self.process.scan_abs(
                 "chr_data_2",
@@ -92,15 +91,15 @@ impl Ds1 {
                 ],
             )?;
 
-
+            self.level_up =
+                self.process
+                    .scan_abs("level_up", &offsets::LEVEL_UP, 0x0, vec![0x0])?;
         } else {
             self.process.refresh()?;
         }
 
         Ok(())
     }
-
-    
 
     pub fn get_x_pos(&self) -> f32 {
         let x_pos = self.char_pos_data.read_f32_rel(Some(CharPosData::POS_X));

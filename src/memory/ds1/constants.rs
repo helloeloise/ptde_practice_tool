@@ -76,7 +76,6 @@ pub struct CharData2;
 
 #[allow(dead_code)]
 impl CharData2 {
-
     pub const HP: usize = 0xC;
     pub const STAMINA: usize = 0x28;
     pub const VITALITY: usize = 0x38;
@@ -86,4 +85,24 @@ impl CharData2 {
     pub const DEXTERITY: usize = 0x58;
     pub const INTELLIGENCE: usize = 0x60;
     pub const FAITH: usize = 0x68;
+    pub const RESISTANCE: usize = 0x80;
+    pub const SOUL_LEVEL: usize = 0x88;
+    pub const SOULS: usize = 0x8C;
+    pub const HUMANITY: usize = 0x7C;
+}
+
+pub struct LevelUp;
+
+#[allow(dead_code)]
+impl LevelUp {
+    pub const VITALITY: usize = 0x0;
+    pub const ATTUNEMENT: usize = 0x4;
+    pub const ENDURANCE: usize = 0x8;
+    pub const STRENGTH: usize = 0xC;
+    pub const DEXTERITY: usize = 0x10;
+    pub const RESISTANCE: usize = 0x14;
+    pub const INTELLIGENCE: usize = 0x18;
+    pub const FAITH: usize = 0x1C;
+    pub const SOUL_LEVEL: usize = 0x16C;
+    pub const SOULS: usize = 0x178;
 }

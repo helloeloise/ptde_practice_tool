@@ -32,3 +32,5 @@ pub const CHAR_DATA_2_AOB: &str = "A1 ? ? ? ? 8B 40 34 53 32 DB 85 C0";
 pub const CHAR_DATA_2_AOB_OFFSET: usize = 0x1;
 pub const CHAR_DATA_2_OFFSET1: usize = 0x0;
 pub const CHAR_DATA_2_OFFSET2: usize = 0x8;
+
+pub const LEVEL_UP: &str = "83 EC 08 8B 15 ? ? ? ? 56 57 8B 7A 08";
