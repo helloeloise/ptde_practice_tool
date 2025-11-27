@@ -74,24 +74,6 @@ impl Player {
         self.inject_levelup_function(ds1);
     }
 
-    pub fn calculate_soul_level(&mut self, ds1: &mut Ds1) -> i32 {
-        let vitality = ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY));
-        let attunement = ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT));
-        let endurance = ds1.chr_data_2.read_i32_rel(Some(CharData2::ENDURANCE));
-        let strength = ds1.chr_data_2.read_i32_rel(Some(CharData2::STRENGTH));
-        let dexterity = ds1.chr_data_2.read_i32_rel(Some(CharData2::DEXTERITY));
-        let intelligence = ds1.chr_data_2.read_i32_rel(Some(CharData2::INTELLIGENCE));
-        let faith = ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH));
-
-        let soul_level =
-            vitality + attunement + endurance + strength + dexterity + intelligence + faith; //Starting level is 3
-
-        ds1.chr_data_2
-            .write_i32_rel(Some(CharData2::SOUL_LEVEL), soul_level);
-
-        soul_level
-    }
-
     pub fn inject_levelup_function(&mut self, ds1: &mut Ds1) {
         let stored_humanity = ds1.chr_data_2.read_i32_rel(Some(CharData2::HUMANITY));
         let level_up_fn_address = ds1.level_up.base_address;
