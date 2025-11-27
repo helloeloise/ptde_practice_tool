@@ -2,6 +2,7 @@ use hudhook::ImguiRenderLoop;
 use imgui::Condition;
 use std::sync::{Arc, Mutex};
 
+use crate::memory::constants::CharData2;
 use crate::memory::{Ds1, ds1};
 use crate::ui::Player;
 
@@ -91,9 +92,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ))
                     .build()
                     {
-                        player.set_player_vitality(&mut ds1, player.vitality);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(&mut ds1, CharData2::VITALITY, player.vitality);
                     }
                     if (ui.input_int(
                         format!("Attunement {:?}", player.attunement),
@@ -101,9 +100,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ))
                     .build()
                     {
-                        player.set_player_attunement(&mut ds1, player.attunement);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(&mut ds1, CharData2::ATTUNEMENT, player.attunement);
                     }
                     if (ui.input_int(
                         format!("Endurance {:?}", player.endurance),
@@ -111,9 +108,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ))
                     .build()
                     {
-                        player.set_player_endurance(&mut ds1, player.endurance);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(&mut ds1, CharData2::ENDURANCE, player.endurance);
                     }
                     if (ui.input_int(
                         format!("Strength {:?}", player.strength),
@@ -121,9 +116,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ))
                     .build()
                     {
-                        player.set_player_strength(&mut ds1, player.strength);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(&mut ds1, CharData2::STRENGTH, player.strength);
                     }
                     if (ui.input_int(
                         format!("Dexterity {:?}", player.dexterity),
@@ -131,9 +124,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ))
                     .build()
                     {
-                        player.set_player_dexterity(&mut ds1, player.dexterity);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(&mut ds1, CharData2::DEXTERITY, player.dexterity);
                     }
                     if (ui.input_int(
                         format!("Intelligence {:?}", player.intelligence),
@@ -141,16 +132,16 @@ impl ImguiRenderLoop for RenderLoop {
                     ))
                     .build()
                     {
-                        player.set_player_intelligence(&mut ds1, player.intelligence);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(
+                            &mut ds1,
+                            CharData2::INTELLIGENCE,
+                            player.intelligence,
+                        );
                     }
                     if (ui.input_int(format!("Faith {:?}", player.faith), &mut player.faith))
                         .build()
                     {
-                        player.set_player_faith(&mut ds1, player.faith);
-                        player.calculate_soul_level(&mut ds1);
-                        player.inject_levelup_function(&mut ds1);
+                        player.set_player_stat(&mut ds1, CharData2::FAITH, player.faith);
                     }
                 }
             });
