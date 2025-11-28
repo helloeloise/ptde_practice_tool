@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::memory::constants::CharData2;
 use crate::memory::{Ds1, ds1};
-use crate::ui::Player;
-
+use crate::ui::{self, Player};
+use crate::ui::Bonfire;
 static mut DS1: Option<Arc<Mutex<Ds1>>> = None;
 
 pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
@@ -42,6 +42,8 @@ impl ImguiRenderLoop for RenderLoop {
         let mut ds1 = instance.lock().unwrap();
         let mut player = Player::new();
         player.instantiate(&mut ds1);
+        let mut bonfire = Bonfire::new();
+        
 
         ui.window("Hello hudhook")
             .size([368.0, 568.0], Condition::FirstUseEver)
@@ -148,7 +150,25 @@ impl ImguiRenderLoop for RenderLoop {
                     }
 
                     
+
+                    
                 }
+                if (ui.button("Warp to depth entrance ")) {
+                    bonfire.set_last_bonfire(&mut ds1, 1002900);
+                    bonfire.inject_bonfire_function(&mut ds1);
+                }  
+                if (ui.button("Warp to Queelag's domain ")) {
+                    bonfire.set_last_bonfire(&mut ds1, 1402960);
+                    bonfire.inject_bonfire_function(&mut ds1);
+                }  
+                if (ui.button("Warp to darkroot bassin ")) {
+                    bonfire.set_last_bonfire(&mut ds1, 1602961);
+                    bonfire.inject_bonfire_function(&mut ds1);
+                }  
+                if (ui.button("Warp to firelink altar ")) {
+                    bonfire.set_last_bonfire(&mut ds1, 1802960);
+                    bonfire.inject_bonfire_function(&mut ds1);
+                }  
             });
     }
 }

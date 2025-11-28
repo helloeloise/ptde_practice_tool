@@ -107,3 +107,15 @@ impl LevelUp {
     pub const SOUL_LEVEL: usize = 0x16C;
     pub const SOULS: usize = 0x178;
 }
+
+
+pub struct WorldState;
+
+#[allow(dead_code)]
+impl WorldState {
+    pub const LAST_BONFIRE: usize = 0xB04;
+    pub const POS_X_STABLE: usize = 0xB70;
+    pub const POS_Y_STABLE: usize = 0xB74;
+    pub const POS_Z_STABLE: usize = 0xB78;
+    pub const POS_ANGLE_STABLE: usize = 0xB84;
+}

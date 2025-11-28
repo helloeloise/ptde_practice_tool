@@ -1,7 +1,7 @@
 pub mod constants;
 pub mod offsets;
 
-use crate::memory::ds1::constants::*;
+use crate::memory::{ds1::constants::*, offsets::BONFIRE_WARP_2_OFFSET1};
 use mem_rs::prelude::*;
 
 #[allow(dead_code)]
@@ -21,6 +21,9 @@ pub struct Ds1 {
     pub char_pos_data: Pointer, // 0x1, 0x0, 0x8
     pub no_stam_consume: bool,
     pub level_up: Pointer,
+    pub bonfire_warp: Pointer,
+    pub bonfire_warp_2: Pointer,
+    pub world_state: Pointer,
 }
 
 impl Ds1 {
@@ -42,6 +45,9 @@ impl Ds1 {
             char_pos_data: Pointer::default(),
             level_up: Pointer::default(),
             no_stam_consume: false,
+            bonfire_warp: Pointer::default(),
+            bonfire_warp_2: Pointer::default(),
+            world_state: Pointer::default(),
         };
         let _ = ds1struct.refresh();
         ds1struct
@@ -94,6 +100,20 @@ impl Ds1 {
             self.level_up =
                 self.process
                     .scan_abs("level_up", &offsets::LEVEL_UP, 0x0, vec![0x0])?;
+            
+            self.bonfire_warp = self.process.scan_abs("bonfire_warp", &offsets::BONFIRE_WARP, 0x0, vec![0x0]).unwrap();
+            self.bonfire_warp_2 = self.process.scan_abs("bonfire_warp_2", &offsets::BONFIRE_WARP_2, BONFIRE_WARP_2_OFFSET1, vec![0x0])?;
+
+            self.world_state = self.process.scan_abs(
+                "world_state",
+                &offsets::WORLD_STATE_AOB,
+                offsets::WORLD_STATE_AOB_OFFSET,
+                vec![0x0,offsets::WORLD_STATE_OFFSET1],
+            )?;
+
+            
+    
+            
         } else {
             self.process.refresh()?;
         }
