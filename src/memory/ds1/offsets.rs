@@ -36,10 +36,12 @@ pub const CHAR_DATA_2_OFFSET2: usize = 0x8;
 pub const LEVEL_UP: &str = "83 EC 08 8B 15 ? ? ? ? 56 57 8B 7A 08";
 
 pub const BONFIRE_WARP: &str = "33 C0 39 46 04 ? ? 8B 0D ? ? ? ? 8B 15 ? ? ? ? C6 41 44 01";
-pub const BONFIRE_WARP_2: &str = "89 73 44 C6 44 24 2C 00 C7 82 84 00 00 00 06 00 00 00 8B 3D ? ? ? ? 85 FF";
+pub const BONFIRE_WARP_2: &str =
+    "89 73 44 C6 44 24 2C 00 C7 82 84 00 00 00 06 00 00 00 8B 3D ? ? ? ? 85 FF";
 pub const BONFIRE_WARP_2_OFFSET1: usize = 0x14;
 
-pub const WORLD_STATE_AOB: &str = "8B 54 24 10 8B C8 F7 D9 39 8A B8 0E 00 00 B3 01 0F 95 C2 8B 0D ? ? ? ? 80 B9 A5 0B 00 00 00";
+pub const WORLD_STATE_AOB: &str =
+    "8B 54 24 10 8B C8 F7 D9 39 8A B8 0E 00 00 B3 01 0F 95 C2 8B 0D ? ? ? ? 80 B9 A5 0B 00 00 00";
 pub const WORLD_STATE_AOB_OFFSET: usize = 0x15;
 pub const WORLD_STATE_OFFSET1: usize = 0x0;
 
@@ -52,3 +54,8 @@ pub const INPUT_STATE_OFFSET1: usize = 0x0;
 pub const INPUT_STATE_OFFSET2: usize = 0x3c;
 pub const INPUT_STATE_OFFSET3: usize = 0x28;
 pub const INPUT_STATE_OFFSET4: usize = 0xC0;
+
+pub const QUITOUT_AOB: &str =
+    "8B 70 3C 8B 2D ? ? ? ? 8B 45 00 8B 8E 48 01 00 00 89 4C 24 34 83 F8 01";
+pub const QUITOUT_AOB_OFFSET: usize = 0x5;
+pub const QUITOUT_OFFSET1: usize = 0x0;

@@ -14,23 +14,23 @@ impl Bonfire {
         Bonfire
     }
 
-
     pub fn inject_bonfire_function(&mut self, ds1: &mut Ds1) {
-
-
-        
-        
-
         println!("Bonfire selected ID: {}", self.get_last_bonfire(ds1));
         let bonfire_warp_address = ds1.bonfire_warp.base_address;
         let bonfire_warp_address_2 = ds1.bonfire_warp_2.read_i32_rel(Some(0x0));
-        println!("Bonfire warp function injected at address: {:#x}", bonfire_warp_address);
-        println!("Bonfire warp 2 function injected at address: {:#x}", bonfire_warp_address_2);
+        println!(
+            "Bonfire warp function injected at address: {:#x}",
+            bonfire_warp_address
+        );
+        println!(
+            "Bonfire warp 2 function injected at address: {:#x}",
+            bonfire_warp_address_2
+        );
 
         /*
-        
-                
-         */
+
+
+        */
 
         unsafe {
             #[unsafe(no_mangle)]
@@ -43,17 +43,16 @@ impl Bonfire {
                 y = in(reg) bonfire_warp_address as i32,
             );
         }
-        
-
-
     }
 
     pub fn get_last_bonfire(&mut self, ds1: &mut Ds1) -> i32 {
-        ds1.world_state.read_i32_rel(Some(constants::WorldState::LAST_BONFIRE))
+        ds1.world_state
+            .read_i32_rel(Some(constants::WorldState::LAST_BONFIRE))
     }
 
     pub fn set_last_bonfire(&mut self, ds1: &mut Ds1, bonfire_id: u32) {
-        ds1.world_state.write_i32_rel(Some(constants::WorldState::LAST_BONFIRE), bonfire_id as i32);
+        ds1.world_state
+            .write_i32_rel(Some(constants::WorldState::LAST_BONFIRE), bonfire_id as i32);
     }
 
     pub fn get_bonfires() -> Vec<(&'static str, i32)> {

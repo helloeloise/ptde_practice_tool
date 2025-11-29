@@ -26,6 +26,7 @@ pub struct Ds1 {
     pub world_state: Pointer,
     pub chr_flags_1: Pointer,
     pub input_state: Pointer,
+    pub quitout: Pointer,
 }
 
 impl Ds1 {
@@ -52,6 +53,7 @@ impl Ds1 {
             world_state: Pointer::default(),
             chr_flags_1: Pointer::default(),
             input_state: Pointer::default(),
+            quitout: Pointer::default(),
         };
         let _ = ds1struct.refresh();
         ds1struct
@@ -104,15 +106,23 @@ impl Ds1 {
             self.level_up =
                 self.process
                     .scan_abs("level_up", &offsets::LEVEL_UP, 0x0, vec![0x0])?;
-            
-            self.bonfire_warp = self.process.scan_abs("bonfire_warp", &offsets::BONFIRE_WARP, 0x0, vec![0x0]).unwrap();
-            self.bonfire_warp_2 = self.process.scan_abs("bonfire_warp_2", &offsets::BONFIRE_WARP_2, BONFIRE_WARP_2_OFFSET1, vec![0x0])?;
+
+            self.bonfire_warp = self
+                .process
+                .scan_abs("bonfire_warp", &offsets::BONFIRE_WARP, 0x0, vec![0x0])
+                .unwrap();
+            self.bonfire_warp_2 = self.process.scan_abs(
+                "bonfire_warp_2",
+                &offsets::BONFIRE_WARP_2,
+                BONFIRE_WARP_2_OFFSET1,
+                vec![0x0],
+            )?;
 
             self.world_state = self.process.scan_abs(
                 "world_state",
                 &offsets::WORLD_STATE_AOB,
                 offsets::WORLD_STATE_AOB_OFFSET,
-                vec![0x0,offsets::WORLD_STATE_OFFSET1],
+                vec![0x0, offsets::WORLD_STATE_OFFSET1],
             )?;
 
             self.chr_flags_1 = self.process.scan_abs(
@@ -126,11 +136,21 @@ impl Ds1 {
                 "input_state",
                 &offsets::INPUT_STATE_AOB,
                 offsets::INPUT_STATE_AOB_OFFSET,
-                vec![0x0,offsets::INPUT_STATE_OFFSET1, offsets::INPUT_STATE_OFFSET2, offsets::INPUT_STATE_OFFSET3, offsets::INPUT_STATE_OFFSET4],
+                vec![
+                    0x0,
+                    offsets::INPUT_STATE_OFFSET1,
+                    offsets::INPUT_STATE_OFFSET2,
+                    offsets::INPUT_STATE_OFFSET3,
+                    offsets::INPUT_STATE_OFFSET4,
+                ],
             )?;
-            
-    
-            
+
+            self.quitout = self.process.scan_abs(
+                "quitout",
+                &offsets::QUITOUT_AOB,
+                offsets::QUITOUT_AOB_OFFSET,
+                vec![0x0, offsets::QUITOUT_OFFSET1],
+            )?;
         } else {
             self.process.refresh()?;
         }

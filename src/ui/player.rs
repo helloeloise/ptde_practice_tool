@@ -47,8 +47,6 @@ impl Player {
             dexterity: 0,
             intelligence: 0,
             faith: 0,
-
-            
         }
     }
 
@@ -69,7 +67,7 @@ impl Player {
         self.stamina = ds1.chr_data_2.read_i32_rel(Some(CharData2::STAMINA));
     }
 
-    pub fn moveswap(&mut self, ds1: &mut Ds1){
+    pub fn moveswap(&mut self, ds1: &mut Ds1) {
         ds1.chr_data_2.write_i64_rel(Some(CharData2::STANCE), 2);
     }
 

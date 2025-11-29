@@ -108,7 +108,6 @@ impl LevelUp {
     pub const SOULS: usize = 0x178;
 }
 
-
 pub struct WorldState;
 
 #[allow(dead_code)]
