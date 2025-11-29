@@ -24,6 +24,8 @@ pub struct Ds1 {
     pub bonfire_warp: Pointer,
     pub bonfire_warp_2: Pointer,
     pub world_state: Pointer,
+    pub chr_flags_1: Pointer,
+    pub input_state: Pointer,
 }
 
 impl Ds1 {
@@ -48,6 +50,8 @@ impl Ds1 {
             bonfire_warp: Pointer::default(),
             bonfire_warp_2: Pointer::default(),
             world_state: Pointer::default(),
+            chr_flags_1: Pointer::default(),
+            input_state: Pointer::default(),
         };
         let _ = ds1struct.refresh();
         ds1struct
@@ -111,6 +115,19 @@ impl Ds1 {
                 vec![0x0,offsets::WORLD_STATE_OFFSET1],
             )?;
 
+            self.chr_flags_1 = self.process.scan_abs(
+                "chr_flags_1",
+                &offsets::FLAGS_AOB_1,
+                offsets::FLAGS_AOB_1_OFFSET,
+                vec![0x0],
+            )?;
+
+            self.input_state = self.process.scan_abs(
+                "input_state",
+                &offsets::INPUT_STATE_AOB,
+                offsets::INPUT_STATE_AOB_OFFSET,
+                vec![0x0,offsets::INPUT_STATE_OFFSET1, offsets::INPUT_STATE_OFFSET2, offsets::INPUT_STATE_OFFSET3, offsets::INPUT_STATE_OFFSET4],
+            )?;
             
     
             

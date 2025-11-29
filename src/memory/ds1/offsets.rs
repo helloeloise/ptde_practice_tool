@@ -42,3 +42,13 @@ pub const BONFIRE_WARP_2_OFFSET1: usize = 0x14;
 pub const WORLD_STATE_AOB: &str = "8B 54 24 10 8B C8 F7 D9 39 8A B8 0E 00 00 B3 01 0F 95 C2 8B 0D ? ? ? ? 80 B9 A5 0B 00 00 00";
 pub const WORLD_STATE_AOB_OFFSET: usize = 0x15;
 pub const WORLD_STATE_OFFSET1: usize = 0x0;
+
+pub const FLAGS_AOB_1: &str = "8B 76 0C 89 35 ? ? ? ? 33 C0";
+pub const FLAGS_AOB_1_OFFSET: usize = 0x5;
+
+pub const INPUT_STATE_AOB: &str = "a1 ? ? ? ? 83 ec 28 53 c7 47 08 00 00 00 00 8b 58 3c";
+pub const INPUT_STATE_AOB_OFFSET: usize = 0x1;
+pub const INPUT_STATE_OFFSET1: usize = 0x0;
+pub const INPUT_STATE_OFFSET2: usize = 0x3c;
+pub const INPUT_STATE_OFFSET3: usize = 0x28;
+pub const INPUT_STATE_OFFSET4: usize = 0xC0;

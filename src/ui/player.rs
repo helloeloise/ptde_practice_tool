@@ -47,6 +47,8 @@ impl Player {
             dexterity: 0,
             intelligence: 0,
             faith: 0,
+
+            
         }
     }
 
