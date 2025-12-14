@@ -1,0 +1,163 @@
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Config {
+    pub keybinds: Keybinds,
+    pub colors: ColorScheme,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Keybinds {
+    pub toggle_menu: String,
+    pub quitout: String,
+    pub moveswap: String,
+    pub toggle_no_gravity: String,
+    pub toggle_no_collision: String,
+    pub load_position_1: String,
+    pub toggle_no_update_ai: String,
+    pub teleport_down: String,
+    pub teleport_up: String,
+    pub store_position_1: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ColorScheme {
+    pub button: ColorRGB,
+    pub button_hovered: ColorRGB,
+    pub button_active: ColorRGB,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ColorRGB {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl ColorRGB {
+    pub fn to_float4(&self) -> [f32; 4] {
+        [
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0,
+            1.0,
+        ]
+    }
+}
+
+impl Config {
+    pub fn load_or_default() -> Self {
+        let config_path = "config.toml";
+        
+        if Path::new(config_path).exists() {
+            match fs::read_to_string(config_path) {
+                Ok(content) => match toml::from_str(&content) {
+                    Ok(config) => return config,
+                    Err(e) => {
+                        eprintln!("Failed to parse config.toml: {}. Using defaults.", e);
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to read config.toml: {}. Using defaults.", e);
+                }
+            }
+        }
+        
+        // Return default config and create the file
+        let default_config = Self::default();
+        let _ = default_config.save();
+        default_config
+    }
+    
+    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let toml_string = toml::to_string_pretty(self)?;
+        fs::write("config.toml", toml_string)?;
+        Ok(())
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            keybinds: Keybinds {
+                toggle_menu: "Keypad0".to_string(),
+                quitout: "Alpha3".to_string(),
+                moveswap: "Keypad2".to_string(),
+                toggle_no_gravity: "Keypad7".to_string(),
+                toggle_no_collision: "Keypad9".to_string(),
+                load_position_1: "Alpha4".to_string(),
+                toggle_no_update_ai: "Keypad5".to_string(),
+                teleport_down: "Alpha7".to_string(),
+                teleport_up: "Alpha8".to_string(),
+                store_position_1: "Keypad8".to_string(),
+            },
+            colors: ColorScheme {
+                button: ColorRGB { r: 206, g: 128, b: 156 },
+                button_hovered: ColorRGB { r: 216, g: 148, b: 176 },
+                button_active: ColorRGB { r: 186, g: 108, b: 136 },
+            },
+        }
+    }
+}
+
+// Helper function to convert string key names to imgui::Key
+pub fn string_to_imgui_key(key_str: &str) -> Option<imgui::Key> {
+    match key_str {
+        "Keypad0" => Some(imgui::Key::Keypad0),
+        "Keypad1" => Some(imgui::Key::Keypad1),
+        "Keypad2" => Some(imgui::Key::Keypad2),
+        "Keypad3" => Some(imgui::Key::Keypad3),
+        "Keypad4" => Some(imgui::Key::Keypad4),
+        "Keypad5" => Some(imgui::Key::Keypad5),
+        "Keypad6" => Some(imgui::Key::Keypad6),
+        "Keypad7" => Some(imgui::Key::Keypad7),
+        "Keypad8" => Some(imgui::Key::Keypad8),
+        "Keypad9" => Some(imgui::Key::Keypad9),
+        "Alpha0" => Some(imgui::Key::Alpha0),
+        "Alpha1" => Some(imgui::Key::Alpha1),
+        "Alpha2" => Some(imgui::Key::Alpha2),
+        "Alpha3" => Some(imgui::Key::Alpha3),
+        "Alpha4" => Some(imgui::Key::Alpha4),
+        "Alpha5" => Some(imgui::Key::Alpha5),
+        "Alpha6" => Some(imgui::Key::Alpha6),
+        "Alpha7" => Some(imgui::Key::Alpha7),
+        "Alpha8" => Some(imgui::Key::Alpha8),
+        "Alpha9" => Some(imgui::Key::Alpha9),
+        "F1" => Some(imgui::Key::F1),
+        "F2" => Some(imgui::Key::F2),
+        "F3" => Some(imgui::Key::F3),
+        "F4" => Some(imgui::Key::F4),
+        "F5" => Some(imgui::Key::F5),
+        "F6" => Some(imgui::Key::F6),
+        "F7" => Some(imgui::Key::F7),
+        "F8" => Some(imgui::Key::F8),
+        "F9" => Some(imgui::Key::F9),
+        "F10" => Some(imgui::Key::F10),
+        "F11" => Some(imgui::Key::F11),
+        "F12" => Some(imgui::Key::F12),
+        "LeftCtrl" => Some(imgui::Key::LeftCtrl),
+        "RightCtrl" => Some(imgui::Key::RightCtrl),
+        "LeftShift" => Some(imgui::Key::LeftShift),
+        "RightShift" => Some(imgui::Key::RightShift),
+        "LeftAlt" => Some(imgui::Key::LeftAlt),
+        "RightAlt" => Some(imgui::Key::RightAlt),
+        "Space" => Some(imgui::Key::Space),
+        "Enter" => Some(imgui::Key::Enter),
+        "Escape" => Some(imgui::Key::Escape),
+        "Tab" => Some(imgui::Key::Tab),
+        "Backspace" => Some(imgui::Key::Backspace),
+        "Insert" => Some(imgui::Key::Insert),
+        "Delete" => Some(imgui::Key::Delete),
+        "Home" => Some(imgui::Key::Home),
+        "End" => Some(imgui::Key::End),
+        "PageUp" => Some(imgui::Key::PageUp),
+        "PageDown" => Some(imgui::Key::PageDown),
+        "LeftArrow" => Some(imgui::Key::LeftArrow),
+        "RightArrow" => Some(imgui::Key::RightArrow),
+        "UpArrow" => Some(imgui::Key::UpArrow),
+        "DownArrow" => Some(imgui::Key::DownArrow),
+        _ => None,
+    }
+}

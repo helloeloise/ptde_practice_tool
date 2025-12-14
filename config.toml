@@ -1,0 +1,36 @@
+# Dark Souls PTDE Practice Tool Configuration
+# Edit this file to customize keybinds and color scheme
+
+[keybinds]
+# Available keys: Keypad0-9, Alpha0-9, F1-F12, LeftCtrl, RightCtrl, LeftShift, RightShift
+# LeftAlt, RightAlt, Space, Enter, Escape, Tab, Backspace, Insert, Delete, Home, End
+# PageUp, PageDown, LeftArrow, RightArrow, UpArrow, DownArrow
+
+toggle_menu = "Keypad0"              # Toggle the main menu
+quitout = "Alpha3"                   # Quitout (return to main menu)
+moveswap = "Keypad2"                 # Moveswap
+toggle_no_gravity = "Keypad7"        # Toggle no gravity
+toggle_no_collision = "Keypad9"      # Toggle no collision
+load_position_1 = "Alpha4"           # Load saved position (slot 1)
+toggle_no_update_ai = "Keypad5"      # Toggle no AI update
+teleport_down = "Alpha7"             # Teleport down
+teleport_up = "Alpha8"               # Teleport up
+store_position_1 = "Keypad8"         # Store current position (slot 1)
+
+[colors]
+# RGB values (0-255)
+
+[colors.button]
+r = 206
+g = 128
+b = 156
+
+[colors.button_hovered]
+r = 216
+g = 148
+b = 176
+
+[colors.button_active]
+r = 186
+g = 108
+b = 136

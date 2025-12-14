@@ -5,6 +5,7 @@ use crate::render_loop::RenderLoop;
 use hudhook::hooks::dx9::ImguiDx9Hooks;
 use hudhook::*;
 
+mod config;
 mod memory;
 mod render_loop;
 mod ui;

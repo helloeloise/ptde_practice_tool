@@ -3,6 +3,7 @@ use imgui::Condition;
 use mem_rs::memory::ReadWrite;
 use std::sync::{Arc, Mutex};
 
+use crate::config::{Config, string_to_imgui_key};
 use crate::memory::constants::{CharData2, CharPosData};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
@@ -29,6 +30,7 @@ pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
 }
 
 pub struct RenderLoop {
+    config: Config,
     no_stamina_consume: bool,
     no_mp_consume: bool,
     no_arrow_consume: bool,
@@ -65,6 +67,7 @@ pub struct RenderLoop {
 impl RenderLoop {
     pub fn new() -> Self {
         RenderLoop {
+            config: Config::load_or_default(),
             no_stamina_consume: false,
             no_mp_consume: false,
             no_arrow_consume: false,
@@ -111,12 +114,19 @@ impl ImguiRenderLoop for RenderLoop {
 
         let mut items_handler = Items::new();
 
-        // Check if user is interacting with any UI
+        // Check if toggle_menu key is pressed
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_menu) {
+            if ui.is_key_pressed(key) {
+                self.menu_open = !self.menu_open;
+            }
+        }
+
+        // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
         let ui_wants_input =
             io.want_capture_mouse || io.want_capture_keyboard || io.want_text_input;
 
-        if ui_wants_input {
+        if ui_wants_input || self.menu_open {
             ds1.input_state.write_u8_rel(None, 0x0);
             if !self.input_was_disabled {
                 self.input_was_disabled = true;
@@ -128,10 +138,10 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
-        // Set custom button colors: RGB(206, 128, 156)
-        let button_color = [206.0 / 255.0, 128.0 / 255.0, 156.0 / 255.0, 1.0];
-        let button_hovered = [216.0 / 255.0, 148.0 / 255.0, 176.0 / 255.0, 1.0];
-        let button_active = [186.0 / 255.0, 108.0 / 255.0, 136.0 / 255.0, 1.0];
+        // Set custom button colors from config
+        let button_color = self.config.colors.button.to_float4();
+        let button_hovered = self.config.colors.button_hovered.to_float4();
+        let button_active = self.config.colors.button_active.to_float4();
 
         let _button_style = ui.push_style_color(imgui::StyleColor::Button, button_color);
         let _button_hovered_style =
@@ -155,50 +165,74 @@ impl ImguiRenderLoop for RenderLoop {
             ui.push_style_color(imgui::StyleColor::FrameBgActive, button_color);
         let _check_mark_style = ui.push_style_color(imgui::StyleColor::CheckMark, button_color);
 
+        // Process keybinds regardless of menu state
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
+            if ui.is_key_pressed(key) {
+                ds1.quitout.write_u32_rel(Some(0x0), 0x2);
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.moveswap) {
+            if ui.is_key_pressed(key) {
+                player.moveswap(&mut ds1);
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_gravity) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_gravity();
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_collision) {
+            if ui.is_key_pressed(key) {
+                ds1.set_disable_collision();
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.load_position_1) {
+            if ui.is_key_pressed(key) {
+                ds1.teleport_player(
+                    self.stored_positions[0].0,
+                    self.stored_positions[0].1,
+                    self.stored_positions[0].2,
+                );
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_update_ai) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_update_ai();
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_down) {
+            if ui.is_key_pressed(key) {
+                ds1.teleport_player(player.x_pos, player.y_pos - 5.0, player.z_pos);
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_up) {
+            if ui.is_key_pressed(key) {
+                ds1.teleport_player(player.x_pos, player.y_pos + 5.0, player.z_pos);
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.store_position_1) {
+            if ui.is_key_pressed(key) {
+                self.stored_positions[0] = (player.x_pos, player.y_pos, player.z_pos);
+            }
+        }
+
+        if !self.menu_open {
+            return;
+        }
+
         ui.window("Hello hudhook")
             .size([368.0, 568.0], Condition::FirstUseEver)
             .position([16.0, 16.0], Condition::FirstUseEver)
             .draw_background(false)
             .build(|| {
-                if (ui.is_key_pressed(imgui::Key::Keypad0)) {
-                    self.menu_open = !self.menu_open;
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Alpha3)) {
-                    ds1.quitout.write_u32_rel(Some(0x0), 0x2);
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Keypad2)) {
-                    player.moveswap(&mut ds1);
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Keypad7)) {
-                    ds1.set_no_gravity();
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Keypad9)) {
-                    ds1.set_disable_collision();
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Alpha4)) {
-                    ds1.teleport_player(
-                        self.stored_positions[0].0,
-                        self.stored_positions[0].1,
-                        self.stored_positions[0].2,
-                    );
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Alpha7)) {
-                    ds1.teleport_player(player.x_pos, player.y_pos - 5.0, player.z_pos);
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Alpha8)) {
-                    ds1.teleport_player(player.x_pos, player.y_pos + 5.0, player.z_pos);
-                }
-
-                if (ui.is_key_pressed(imgui::Key::Keypad8)) {
-                    self.stored_positions[0] = (player.x_pos, player.y_pos, player.z_pos);
-                }
 
                 ui.text(format!("HP {:?}", player.hp));
                 ui.text(format!("Stamina {:?}", player.stamina));
