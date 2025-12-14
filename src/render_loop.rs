@@ -3,9 +3,18 @@ use imgui::Condition;
 use mem_rs::memory::ReadWrite;
 use std::sync::{Arc, Mutex};
 
-use crate::memory::constants::CharData2;
+use crate::memory::constants::{CharData2, CharPosData};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
+use crate::ui::Items;
+
+#[cfg(windows)]
+use windows_sys::Win32::Foundation::RECT;
+#[cfg(windows)]
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    GetForegroundWindow, GetWindowRect, SetCursorPos,
+};
+
 use crate::ui::{self, Player};
 
 static mut DS1: Option<Arc<Mutex<Ds1>>> = None;
@@ -21,28 +30,72 @@ pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
 
 pub struct RenderLoop {
     no_stamina_consume: bool,
+    no_mp_consume: bool,
+    no_arrow_consume: bool,
+    player_hide: bool,
+    player_silence: bool,
+    no_death: bool,
+    no_damage: bool,
+    no_hit: bool,
+    no_attack: bool,
+    no_move: bool,
     no_update_ai: bool,
-    x_stored_pos: f32,
-    y_stored_pos: f32,
-    z_stored_pos: f32,
+    disable_collision: bool,
+    no_gravity: bool,
+    stored_positions: [(f32, f32, f32); 3],
+    input_was_disabled: bool,
 
     stored_bonfire: i32,
     selected_bonfire_id: i32,
     bonfire_search: String,
     menu_open: bool,
+    selected_item_index: usize,
+    item_quantity: i32,
+    item_search: String,
+    selected_ring_index: usize,
+    ring_quantity: i32,
+    ring_search: String,
+    selected_weapon_index: usize,
+    weapon_quantity: i32,
+    weapon_search: String,
+    weapon_upgrade_level: i32,
+    selected_infusion_index: usize,
+    give_item_type: usize, // 0 = items, 1 = rings, 2 = weapons
 }
 impl RenderLoop {
     pub fn new() -> Self {
         RenderLoop {
             no_stamina_consume: false,
+            no_mp_consume: false,
+            no_arrow_consume: false,
+            player_hide: false,
+            player_silence: false,
+            no_death: false,
+            no_damage: false,
+            no_hit: false,
+            no_attack: false,
+            no_move: false,
             no_update_ai: false,
-            x_stored_pos: 0.0,
-            y_stored_pos: 0.0,
-            z_stored_pos: 0.0,
+            disable_collision: false,
+            no_gravity: false,
+            stored_positions: [(0.0, 0.0, 0.0); 3],
+            input_was_disabled: false,
             stored_bonfire: 0,
             selected_bonfire_id: -1,
             bonfire_search: String::new(),
-            menu_open: true,
+            menu_open: false,
+            selected_item_index: 0,
+            item_quantity: 1,
+            item_search: String::new(),
+            selected_ring_index: 0,
+            ring_quantity: 1,
+            ring_search: String::new(),
+            selected_weapon_index: 0,
+            weapon_quantity: 1,
+            weapon_search: String::new(),
+            weapon_upgrade_level: 0,
+            selected_infusion_index: 0,
+            give_item_type: 0,
         }
     }
 }
@@ -55,6 +108,53 @@ impl ImguiRenderLoop for RenderLoop {
         player.instantiate(&mut ds1);
         let mut bonfire = Bonfire::new();
         self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
+
+        let mut items_handler = Items::new();
+
+        // Check if user is interacting with any UI
+        let io = ui.io();
+        let ui_wants_input =
+            io.want_capture_mouse || io.want_capture_keyboard || io.want_text_input;
+
+        if ui_wants_input {
+            ds1.input_state.write_u8_rel(None, 0x0);
+            if !self.input_was_disabled {
+                self.input_was_disabled = true;
+            }
+        } else {
+            ds1.input_state.write_u8_rel(None, 0x1);
+            if self.input_was_disabled {
+                self.input_was_disabled = false;
+            }
+        }
+
+        // Set custom button colors: RGB(206, 128, 156)
+        let button_color = [206.0 / 255.0, 128.0 / 255.0, 156.0 / 255.0, 1.0];
+        let button_hovered = [216.0 / 255.0, 148.0 / 255.0, 176.0 / 255.0, 1.0];
+        let button_active = [186.0 / 255.0, 108.0 / 255.0, 136.0 / 255.0, 1.0];
+
+        let _button_style = ui.push_style_color(imgui::StyleColor::Button, button_color);
+        let _button_hovered_style =
+            ui.push_style_color(imgui::StyleColor::ButtonHovered, button_hovered);
+        let _button_active_style =
+            ui.push_style_color(imgui::StyleColor::ButtonActive, button_active);
+        let _header_style = ui.push_style_color(imgui::StyleColor::Header, button_color);
+        let _header_hovered_style =
+            ui.push_style_color(imgui::StyleColor::HeaderHovered, button_hovered);
+        let _header_active_style =
+            ui.push_style_color(imgui::StyleColor::HeaderActive, button_active);
+        let _title_style = ui.push_style_color(imgui::StyleColor::TitleBg, button_color);
+        let _title_active_style =
+            ui.push_style_color(imgui::StyleColor::TitleBgActive, button_color);
+        let _title_collapsed_style =
+            ui.push_style_color(imgui::StyleColor::TitleBgCollapsed, button_active);
+        let _frame_bg_style = ui.push_style_color(imgui::StyleColor::FrameBg, button_active);
+        let _frame_bg_hovered_style =
+            ui.push_style_color(imgui::StyleColor::FrameBgHovered, button_hovered);
+        let _frame_bg_active_style =
+            ui.push_style_color(imgui::StyleColor::FrameBgActive, button_color);
+        let _check_mark_style = ui.push_style_color(imgui::StyleColor::CheckMark, button_color);
+
         ui.window("Hello hudhook")
             .size([368.0, 568.0], Condition::FirstUseEver)
             .position([16.0, 16.0], Condition::FirstUseEver)
@@ -62,15 +162,42 @@ impl ImguiRenderLoop for RenderLoop {
             .build(|| {
                 if (ui.is_key_pressed(imgui::Key::Keypad0)) {
                     self.menu_open = !self.menu_open;
-                    if self.menu_open {
-                        ds1.input_state.write_u8_rel(None, 0x0);
-                    } else {
-                        ds1.input_state.write_u8_rel(None, 0x1);
-                    }
                 }
 
                 if (ui.is_key_pressed(imgui::Key::Alpha3)) {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Keypad2)) {
+                    player.moveswap(&mut ds1);
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Keypad7)) {
+                    ds1.set_no_gravity();
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Keypad9)) {
+                    ds1.set_disable_collision();
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Alpha4)) {
+                    ds1.teleport_player(
+                        self.stored_positions[0].0,
+                        self.stored_positions[0].1,
+                        self.stored_positions[0].2,
+                    );
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Alpha7)) {
+                    ds1.teleport_player(player.x_pos, player.y_pos - 5.0, player.z_pos);
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Alpha8)) {
+                    ds1.teleport_player(player.x_pos, player.y_pos + 5.0, player.z_pos);
+                }
+
+                if (ui.is_key_pressed(imgui::Key::Keypad8)) {
+                    self.stored_positions[0] = (player.x_pos, player.y_pos, player.z_pos);
                 }
 
                 ui.text(format!("HP {:?}", player.hp));
@@ -80,31 +207,99 @@ impl ImguiRenderLoop for RenderLoop {
                 ui.text(format!("Pos Y {:?}", player.y_pos));
                 ui.text(format!("Pos Z {:?}", player.z_pos));
 
-                ui.text(format!("Stored Pos X {:?}", self.x_stored_pos));
-                ui.text(format!("Stored Pos Y {:?}", self.y_stored_pos));
-                ui.text(format!("Stored Pos Z {:?}", self.z_stored_pos));
-
                 if ui.button("Eject") {
                     print!("test");
                     hudhook::eject();
                 }
 
-                if ui.button("Store player position") {
-                    self.x_stored_pos = player.x_pos;
-                    self.y_stored_pos = player.y_pos;
-                    self.z_stored_pos = player.z_pos;
+                if ui.button("Positions") {
+                    ui.open_popup("positions_popup");
                 }
 
-                if ui.button("Teleport player") {
-                    ds1.teleport_player(self.x_stored_pos, self.y_stored_pos, self.z_stored_pos);
+                if let Some(_popup) = ui.begin_popup("positions_popup") {
+                    for i in 0..3 {
+                        ui.text(format!(
+                            "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}",
+                            i + 1,
+                            self.stored_positions[i].0,
+                            self.stored_positions[i].1,
+                            self.stored_positions[i].2
+                        ));
+
+                        ui.same_line();
+                        if ui.button(format!("Store##{}", i)) {
+                            self.stored_positions[i] = (player.x_pos, player.y_pos, player.z_pos);
+                        }
+
+                        ui.same_line();
+                        if ui.button(format!("Restore##{}", i)) {
+                            ds1.teleport_player(
+                                self.stored_positions[i].0,
+                                self.stored_positions[i].1,
+                                self.stored_positions[i].2,
+                            );
+                        }
+
+                        ui.separator();
+                    }
                 }
 
-                if ui.checkbox("inf stam", &mut self.no_stamina_consume) {
-                    ds1.set_no_stam_consume();
+                if ui.button("Debug Flags") {
+                    ui.open_popup("debug_flags_popup");
                 }
 
-                if ui.checkbox("no update ai", &mut self.no_update_ai) {
-                    ds1.set_no_update_ai();
+                if let Some(_popup) = ui.begin_popup("debug_flags_popup") {
+                    if ui.checkbox("inf stam", &mut self.no_stamina_consume) {
+                        ds1.set_no_stam_consume();
+                    }
+
+                    if ui.checkbox("inf mp", &mut self.no_mp_consume) {
+                        ds1.set_no_mp_consume();
+                    }
+
+                    if ui.checkbox("inf arrows", &mut self.no_arrow_consume) {
+                        ds1.set_no_arrow_consume();
+                    }
+
+                    if ui.checkbox("player hide", &mut self.player_hide) {
+                        ds1.set_player_hide();
+                    }
+
+                    if ui.checkbox("player silence", &mut self.player_silence) {
+                        ds1.set_player_silence();
+                    }
+
+                    if ui.checkbox("no death", &mut self.no_death) {
+                        ds1.set_no_death();
+                    }
+
+                    if ui.checkbox("no damage", &mut self.no_damage) {
+                        ds1.set_no_damage();
+                    }
+
+                    if ui.checkbox("no hit", &mut self.no_hit) {
+                        ds1.set_no_hit();
+                    }
+
+                    if ui.checkbox("no attack", &mut self.no_attack) {
+                        ds1.set_no_attack();
+                    }
+
+                    if ui.checkbox("no move", &mut self.no_move) {
+                        ds1.set_no_move();
+                    }
+
+                    if ui.checkbox("no update ai", &mut self.no_update_ai) {
+                        ds1.set_no_update_ai();
+                    }
+
+                    if ui.checkbox("disable collision", &mut self.disable_collision) {
+                        ds1.set_disable_collision();
+                    }
+
+                    if ui.checkbox("no gravity", &mut self.no_gravity) {
+                        ds1.set_no_gravity();
+                    }
                 }
 
                 if ui.button("Stats") {
@@ -228,8 +423,217 @@ impl ImguiRenderLoop for RenderLoop {
                         bonfire.inject_bonfire_function(&mut ds1);
                     }
                 }
-                if (ui.button("Fast quitout")) {
+                if ui.button("Fast quitout") {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
+                }
+
+                if ui.button("Give item") {
+                    ui.open_popup("give_item_popup");
+                }
+
+                if let Some(_popup) = ui.begin_popup("give_item_popup") {
+                    // Tab bar for selecting item type
+                    if ui.radio_button("Items", &mut self.give_item_type, 0) {}
+                    ui.same_line();
+                    if ui.radio_button("Rings", &mut self.give_item_type, 1) {}
+                    ui.same_line();
+                    if ui.radio_button("Weapons", &mut self.give_item_type, 2) {}
+
+                    ui.separator();
+
+                    // Items tab
+                    if self.give_item_type == 0 {
+                        ui.set_next_item_width(400.0);
+                        if ui.is_window_appearing() {
+                            ui.set_keyboard_focus_here();
+                        }
+                        ui.input_text("Search", &mut self.item_search).build();
+
+                        let item_data = Items::get_item_data();
+                        let selected_item = &item_data[self.selected_item_index];
+                        let preview_text = format!("{} (ID: {})", selected_item.3, selected_item.0);
+
+                        ui.set_next_item_width(400.0);
+                        if let Some(_combo) = ui.begin_combo("##item_combo", &preview_text) {
+                            let search_lower = self.item_search.to_lowercase();
+
+                            for (index, item) in item_data.iter().enumerate() {
+                                let item_name = item.3;
+
+                                if !search_lower.is_empty()
+                                    && !item_name.to_lowercase().contains(&search_lower)
+                                {
+                                    continue;
+                                }
+
+                                let is_selected = self.selected_item_index == index;
+                                let label = format!("{} (ID: {})", item_name, item.0);
+
+                                if ui.selectable_config(&label).selected(is_selected).build() {
+                                    self.selected_item_index = index;
+                                    self.item_quantity = item.1;
+                                }
+
+                                if is_selected {
+                                    ui.set_item_default_focus();
+                                }
+                            }
+                        }
+
+                        ui.set_next_item_width(200.0);
+                        ui.input_int("Quantity", &mut self.item_quantity).build();
+
+                        if ui.button("Give Selected Item") {
+                            let selected = &item_data[self.selected_item_index];
+                            items_handler.execute_get_item(
+                                &mut ds1,
+                                0x40000000,
+                                selected.0,
+                                self.item_quantity,
+                            );
+                        }
+                    }
+
+                    // Rings tab
+                    if self.give_item_type == 1 {
+                        ui.set_next_item_width(400.0);
+                        if ui.is_window_appearing() {
+                            ui.set_keyboard_focus_here();
+                        }
+                        ui.input_text("Search", &mut self.ring_search).build();
+
+                        let ring_data = Items::get_ring_data();
+                        let selected_ring = &ring_data[self.selected_ring_index];
+                        let preview_text = format!("{} (ID: {})", selected_ring.3, selected_ring.0);
+
+                        ui.set_next_item_width(400.0);
+                        if let Some(_combo) = ui.begin_combo("##ring_combo", &preview_text) {
+                            let search_lower = self.ring_search.to_lowercase();
+
+                            for (index, ring) in ring_data.iter().enumerate() {
+                                let ring_name = ring.3;
+
+                                if !search_lower.is_empty()
+                                    && !ring_name.to_lowercase().contains(&search_lower)
+                                {
+                                    continue;
+                                }
+
+                                let is_selected = self.selected_ring_index == index;
+                                let label = format!("{} (ID: {})", ring_name, ring.0);
+
+                                if ui.selectable_config(&label).selected(is_selected).build() {
+                                    self.selected_ring_index = index;
+                                    self.ring_quantity = ring.1;
+                                }
+                                if is_selected {
+                                    ui.set_item_default_focus();
+                                }
+                            }
+                        }
+
+                        ui.set_next_item_width(200.0);
+                        ui.input_int("Quantity", &mut self.ring_quantity).build();
+
+                        if ui.button("Give Selected Ring") {
+                            let selected = &ring_data[self.selected_ring_index];
+                            items_handler.execute_get_item(
+                                &mut ds1,
+                                0x20000000,
+                                selected.0,
+                                self.ring_quantity,
+                            );
+                        }
+                    }
+
+                    // Weapons tab
+                    if self.give_item_type == 2 {
+                        ui.set_next_item_width(400.0);
+                        if ui.is_window_appearing() {
+                            ui.set_keyboard_focus_here();
+                        }
+                        ui.input_text("Search", &mut self.weapon_search).build();
+
+                        let weapon_data = Items::get_weapon_data();
+                        let selected_weapon = &weapon_data[self.selected_weapon_index];
+                        let preview_text =
+                            format!("{} (ID: {})", selected_weapon.3, selected_weapon.0);
+
+                        ui.set_next_item_width(400.0);
+                        if let Some(_combo) = ui.begin_combo("##weapon_combo", &preview_text) {
+                            let search_lower = self.weapon_search.to_lowercase();
+
+                            for (index, weapon) in weapon_data.iter().enumerate() {
+                                let weapon_name = weapon.3;
+
+                                if !search_lower.is_empty()
+                                    && !weapon_name.to_lowercase().contains(&search_lower)
+                                {
+                                    continue;
+                                }
+
+                                let is_selected = self.selected_weapon_index == index;
+                                let label = format!("{} (ID: {})", weapon_name, weapon.0);
+
+                                if ui.selectable_config(&label).selected(is_selected).build() {
+                                    self.selected_weapon_index = index;
+                                    self.weapon_quantity = weapon.1;
+                                }
+
+                                if is_selected {
+                                    ui.set_item_default_focus();
+                                }
+                            }
+                        }
+
+                        ui.set_next_item_width(200.0);
+                        ui.input_int("Quantity", &mut self.weapon_quantity).build();
+
+                        let infusion_data = Items::get_infusion_data();
+                        let selected_infusion = &infusion_data[self.selected_infusion_index];
+
+                        ui.set_next_item_width(200.0);
+                        if let Some(_combo) = ui.begin_combo("Infusion", selected_infusion.0) {
+                            for (index, infusion) in infusion_data.iter().enumerate() {
+                                let is_selected = self.selected_infusion_index == index;
+
+                                if ui
+                                    .selectable_config(infusion.0)
+                                    .selected(is_selected)
+                                    .build()
+                                {
+                                    self.selected_infusion_index = index;
+                                    if self.weapon_upgrade_level > infusion.2 {
+                                        self.weapon_upgrade_level = infusion.2;
+                                    }
+                                }
+
+                                if is_selected {
+                                    ui.set_item_default_focus();
+                                }
+                            }
+                        }
+
+                        ui.set_next_item_width(200.0);
+                        ui.slider(
+                            "Upgrade Level",
+                            0,
+                            selected_infusion.2,
+                            &mut self.weapon_upgrade_level,
+                        );
+
+                        if ui.button("Give Selected Weapon") {
+                            let selected = &weapon_data[self.selected_weapon_index];
+                            let upgraded_weapon_id =
+                                selected.0 + selected_infusion.1 + self.weapon_upgrade_level;
+                            items_handler.execute_get_item(
+                                &mut ds1,
+                                0x00000000,
+                                upgraded_weapon_id,
+                                self.weapon_quantity,
+                            );
+                        }
+                    }
                 }
             });
     }

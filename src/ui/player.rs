@@ -81,8 +81,7 @@ impl Player {
         let level_up_fn_address = ds1.level_up.base_address;
 
         println!("Level up function address: {:X}", level_up_fn_address);
-        let mut x: i32 = 25;
-        let mut y: i32 = ds1.level_up.base_address as i32;
+
         let level_up_codecave: i32 = code_cave as *const () as i32;
         println!("Ptr address: {:X}", level_up_codecave);
         print!("Level up codecave address: {:X}", level_up_codecave);
@@ -132,7 +131,7 @@ impl Player {
             asm!(
                 "mov eax, {x}",
                 "mov ecx, {y}",
-                "call {z}",x = in(reg) level_up_codecave as i32, y = in(reg)level_up_codecave - 328 ,z = in(reg) level_up_fn_address as i32,
+                "call {z}",x = in(reg) level_up_codecave as i32, y = in(reg)level_up_codecave - 0x16C ,z = in(reg) level_up_fn_address as i32,
 
 
 

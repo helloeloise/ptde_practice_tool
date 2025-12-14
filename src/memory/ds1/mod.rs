@@ -27,6 +27,11 @@ pub struct Ds1 {
     pub chr_flags_1: Pointer,
     pub input_state: Pointer,
     pub quitout: Pointer,
+    pub no_death_pointer: Pointer,
+    pub item_get_pointer: Pointer,
+    pub item_drop_pointer: Pointer,
+    pub item_drop_unknown_1_pointer: Pointer,
+    pub item_drop_unknown_2_pointer: Pointer,
 }
 
 impl Ds1 {
@@ -54,6 +59,11 @@ impl Ds1 {
             chr_flags_1: Pointer::default(),
             input_state: Pointer::default(),
             quitout: Pointer::default(),
+            no_death_pointer: Pointer::default(),
+            item_get_pointer: Pointer::default(),
+            item_drop_pointer: Pointer::default(),
+            item_drop_unknown_1_pointer: Pointer::default(),
+            item_drop_unknown_2_pointer: Pointer::default(),
         };
         let _ = ds1struct.refresh();
         ds1struct
@@ -118,6 +128,27 @@ impl Ds1 {
                 vec![0x0],
             )?;
 
+            self.item_drop_pointer = self.process.scan_abs(
+                "item_drop_pointer",
+                &offsets::ITEM_DROP_AOB,
+                0x0,
+                vec![0x0],
+            )?;
+
+            self.item_drop_unknown_1_pointer = self.process.scan_abs(
+                "item_drop_unknown_1_pointer",
+                &offsets::ITEM_DROP_UNKNOWN_1_AOB,
+                offsets::ITEM_DROP_UNKNOWN_1_AOB_OFFSET,
+                vec![0x0],
+            )?;
+
+            self.item_drop_unknown_2_pointer = self.process.scan_abs(
+                "item_drop_unknown_2_pointer",
+                &offsets::ITEM_DROP_UNKNOWN_2_AOB,
+                offsets::ITEM_DROP_UNKNOWN_2_AOB_OFFSET,
+                vec![0x0],
+            )?;
+
             self.world_state = self.process.scan_abs(
                 "world_state",
                 &offsets::WORLD_STATE_AOB,
@@ -150,6 +181,20 @@ impl Ds1 {
                 &offsets::QUITOUT_AOB,
                 offsets::QUITOUT_AOB_OFFSET,
                 vec![0x0, offsets::QUITOUT_OFFSET1],
+            )?;
+
+            self.no_death_pointer = self.process.scan_abs(
+                "no_death_pointer",
+                &offsets::PLAYER_NO_DEAD_AOB,
+                offsets::PLAYER_NO_DEAD_AOB_OFFSET,
+                vec![0x0],
+            )?;
+
+            self.item_get_pointer = self.process.scan_abs(
+                "item_get_pointer",
+                &offsets::ITEM_GET_AOB,
+                0x0,
+                vec![0x0],
             )?;
         } else {
             self.process.refresh()?;
@@ -209,12 +254,153 @@ impl Ds1 {
         no_update_ai
     }
 
+    pub fn set_no_death(&mut self) -> bool {
+        let no_death = self.chr_dbg.read_bool_rel(Some(0x0));
+        if no_death == false {
+            self.no_death_pointer.write_u8_rel(Some(0x0), 0x1);
+        } else {
+            self.no_death_pointer.write_u8_rel(Some(0x0), 0x0);
+        }
+        no_death
+    }
+
+    pub fn set_no_mp_consume(&mut self) -> bool {
+        let no_mp_consume = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_MPCONSUME));
+        if no_mp_consume == false {
+            self.chr_dbg
+                .write_u8_rel(Some(ChrDbg::ALL_NO_MPCONSUME), 0x1);
+        } else {
+            self.chr_dbg
+                .write_u8_rel(Some(ChrDbg::ALL_NO_MPCONSUME), 0x0);
+        }
+        no_mp_consume
+    }
+
+    pub fn set_no_arrow_consume(&mut self) -> bool {
+        let no_arrow_consume = self
+            .chr_dbg
+            .read_bool_rel(Some(ChrDbg::ALL_NO_ARROW_CONSUME));
+        if no_arrow_consume == false {
+            self.chr_dbg
+                .write_u8_rel(Some(ChrDbg::ALL_NO_ARROW_CONSUME), 0x1);
+        } else {
+            self.chr_dbg
+                .write_u8_rel(Some(ChrDbg::ALL_NO_ARROW_CONSUME), 0x0);
+        }
+        no_arrow_consume
+    }
+
+    pub fn set_player_hide(&mut self) -> bool {
+        let player_hide = self.chr_dbg.read_bool_rel(Some(ChrDbg::PLAYER_HIDE));
+        if player_hide == false {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_HIDE), 0x1);
+        } else {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_HIDE), 0x0);
+        }
+        player_hide
+    }
+
+    pub fn set_player_silence(&mut self) -> bool {
+        let player_silence = self.chr_dbg.read_bool_rel(Some(ChrDbg::PLAYER_SILENCE));
+        if player_silence == false {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_SILENCE), 0x1);
+        } else {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_SILENCE), 0x0);
+        }
+        player_silence
+    }
+
+    pub fn set_no_damage(&mut self) -> bool {
+        let no_damage = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_DAMAGE));
+        if no_damage == false {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_DAMAGE), 0x1);
+        } else {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_DAMAGE), 0x0);
+        }
+        no_damage
+    }
+
+    pub fn set_no_hit(&mut self) -> bool {
+        let no_hit = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_HIT));
+        if no_hit == false {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_HIT), 0x1);
+        } else {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_HIT), 0x0);
+        }
+        no_hit
+    }
+
+    pub fn set_no_attack(&mut self) -> bool {
+        let no_attack = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_ATTACK));
+        if no_attack == false {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_ATTACK), 0x1);
+        } else {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_ATTACK), 0x0);
+        }
+        no_attack
+    }
+
+    pub fn set_no_move(&mut self) -> bool {
+        let no_move = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_MOVE));
+        if no_move == false {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), 0x1);
+        } else {
+            self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), 0x0);
+        }
+        no_move
+    }
+
     pub fn teleport_player(&mut self, x: f32, y: f32, z: f32) {
-        self.char_pos_data
-            .write_f32_rel(Some(CharPosData::POS_X), x);
-        self.char_pos_data
-            .write_f32_rel(Some(CharPosData::POS_Y), y);
-        self.char_pos_data
-            .write_f32_rel(Some(CharPosData::POS_Z), z);
+        self.char_map_data
+            .write_f32_rel(Some(CharMapData::WARP_X), x);
+        self.char_map_data
+            .write_f32_rel(Some(CharMapData::WARP_Y), y);
+        self.char_map_data
+            .write_f32_rel(Some(CharMapData::WARP_Z), z);
+        self.char_map_data.write_u32_rel(Some(CharMapData::WARP), 1);
+    }
+
+    pub fn set_disable_collision(&mut self) -> bool {
+        let current_flags = self
+            .char_map_data
+            .read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
+        let collision_disabled = (current_flags & CharMapFlags::DISABLE_MAP_HIT as u32) != 0;
+
+        if collision_disabled {
+            // Enable collision by clearing the flag
+            self.char_map_data.write_u32_rel(
+                Some(CharMapData::CHAR_MAP_FLAGS),
+                current_flags & !(CharMapFlags::DISABLE_MAP_HIT as u32),
+            );
+        } else {
+            // Disable collision by setting the flag
+            self.char_map_data.write_u32_rel(
+                Some(CharMapData::CHAR_MAP_FLAGS),
+                current_flags | CharMapFlags::DISABLE_MAP_HIT as u32,
+            );
+        }
+
+        collision_disabled
+    }
+
+    pub fn set_no_gravity(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_1));
+        let gravity_disabled = (current_flags & CharFlags1::SET_DISABLE_GRAVITY as u32) != 0;
+
+        if gravity_disabled {
+            // Enable gravity by clearing the flag
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_1),
+                current_flags & !(CharFlags1::SET_DISABLE_GRAVITY as u32),
+            );
+        } else {
+            // Disable gravity by setting the flag
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_1),
+                current_flags | CharFlags1::SET_DISABLE_GRAVITY as u32,
+            );
+        }
+
+        gravity_disabled
     }
 }

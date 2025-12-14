@@ -41,6 +41,42 @@ impl CharData1 {
     pub const STORED_ITEM: usize = 0x628;
 }
 
+pub struct CharFlags1;
+
+#[allow(dead_code)]
+impl CharFlags1 {
+    pub const SET_DEAD_MODE: usize = 0x02000000;
+    pub const DISABLE_DAMAGE: usize = 0x04000000; // Doesn't prevent healing
+    pub const ENABLE_INVINCIBLE: usize = 0x08000000; // Super armor and disable damage, still die to killbox
+    pub const FIRST_PERSON: usize = 0x00100000;
+    pub const SET_DRAW_ENABLE: usize = 0x00800000;
+    pub const SET_SUPER_ARMOR: usize = 0x00010000;
+    pub const SET_DISABLE_GRAVITY: usize = 0x00004000;
+    pub const FORCE_SET_OMISSION: usize = 0x00000100;
+    pub const FORCE_UPDATE_NEXT_FRAME: usize = 0x00000200;
+    pub const FORCE_PLAY_ANIMATION: usize = 0x00000100;
+    pub const SET_EVENT_GENERATE: usize = 0x00000010;
+    pub const DISABLE_HP_GAUGE: usize = 0x00000008;
+}
+
+pub struct CharFlags2;
+
+#[allow(dead_code)]
+impl CharFlags2 {
+    pub const NO_GOODS_CONSUME: usize = 0x01000000;
+    pub const DRAW_COUNTER: usize = 0x00200000;
+    pub const DRAW_DIRECTION: usize = 0x00004000;
+    pub const NO_UPDATE: usize = 0x00008000;
+    pub const NO_ATTACK: usize = 0x00000100;
+    pub const NO_MOVE: usize = 0x00000200;
+    pub const NO_STAM_CONSUME: usize = 0x00000400;
+    pub const NO_MP_CONSUME: usize = 0x00000800;
+    pub const NO_DEAD: usize = 0x00000020;
+    pub const NO_DAMAGE: usize = 0x00000040;
+    pub const NO_HIT: usize = 0x00000080;
+    pub const DRAW_HIT: usize = 0x00000004;
+}
+
 pub struct CharMapData;
 
 #[allow(dead_code)]
@@ -53,6 +89,13 @@ impl CharMapData {
     pub const WARP_Y: usize = 0xD4;
     pub const WARP_Z: usize = 0xD8;
     pub const WARP_ANGLE: usize = 0xD4;
+}
+
+pub struct CharMapFlags;
+
+#[allow(dead_code)]
+impl CharMapFlags {
+    pub const DISABLE_MAP_HIT: usize = 0x00000010;
 }
 
 pub struct AnimData;
@@ -90,6 +133,7 @@ impl CharData2 {
     pub const SOULS: usize = 0x8C;
     pub const HUMANITY: usize = 0x7C;
     pub const STANCE: usize = 0x230;
+    pub const INVENTORY_INDEX_START: usize = 0x1B8;
 }
 
 pub struct LevelUp;
