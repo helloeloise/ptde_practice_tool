@@ -50,7 +50,7 @@ impl ColorRGB {
 impl Config {
     pub fn load_or_default() -> Self {
         let config_path = "config.toml";
-        
+
         if Path::new(config_path).exists() {
             match fs::read_to_string(config_path) {
                 Ok(content) => match toml::from_str(&content) {
@@ -64,13 +64,13 @@ impl Config {
                 }
             }
         }
-        
+
         // Return default config and create the file
         let default_config = Self::default();
         let _ = default_config.save();
         default_config
     }
-    
+
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         let toml_string = toml::to_string_pretty(self)?;
         fs::write("config.toml", toml_string)?;
@@ -94,9 +94,21 @@ impl Default for Config {
                 store_position_1: "Keypad8".to_string(),
             },
             colors: ColorScheme {
-                button: ColorRGB { r: 206, g: 128, b: 156 },
-                button_hovered: ColorRGB { r: 216, g: 148, b: 176 },
-                button_active: ColorRGB { r: 186, g: 108, b: 136 },
+                button: ColorRGB {
+                    r: 206,
+                    g: 128,
+                    b: 156,
+                },
+                button_hovered: ColorRGB {
+                    r: 216,
+                    g: 148,
+                    b: 176,
+                },
+                button_active: ColorRGB {
+                    r: 186,
+                    g: 108,
+                    b: 136,
+                },
             },
         }
     }

@@ -5,9 +5,6 @@ pub const POS_LOCK_2_AOB_OFFSET: usize = 0x2;
 pub const NODE_GRAPH_AOB: &str = "8B 4C 24 5C 8B 11 50 8B 42 34 FF D0 80 BB 90 00 00 00 ?";
 pub const NODE_GRAPH_AOB_OFFSET: usize = 0x1;
 
-pub const ALL_NO_MAGIC_QTY_CONSUME_AOB: &str = "38 1D ? ? ? ? 0F 94 C1 3A CB";
-pub const ALL_NO_MAGIC_QTY_CONSUME_AOB_OFFSET: usize = 0x2;
-
 pub const PLAYER_NO_DEAD_AOB: &str = "53 56 8B F0 8A 9E C4 03 00 00 8B 06 8B 90 A4 00 00 00 C0 EB 05 8B CE 80 E3 01 FF D2 84 C0 ? ? 80 3D ? ? ? ? 00";
 pub const PLAYER_NO_DEAD_AOB_OFFSET: usize = 0x22;
 
@@ -72,3 +69,6 @@ pub const ITEM_DROP_UNKNOWN_1_AOB_OFFSET: usize = 0x12;
 pub const ITEM_DROP_UNKNOWN_2_AOB: &str =
     "D9 E8 8B 1D ? ? ? ? 83 EC 08 D9 54 24 04 D9 1C 24 8D 44 24 20 6A 03 8B D3";
 pub const ITEM_DROP_UNKNOWN_2_AOB_OFFSET: usize = 0x4;
+
+pub const ALL_NO_MAGIC_QTY_CONSUME_AOB: &str = "38 1D ? ? ? ? 0F 94 C1 3A CB";
+pub const ALL_NO_MAGIC_QTY_CONSUME_AOB_OFFSET: usize = 0x2;

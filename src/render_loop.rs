@@ -32,8 +32,8 @@ pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
 pub struct RenderLoop {
     config: Config,
     no_stamina_consume: bool,
-    no_mp_consume: bool,
-    no_arrow_consume: bool,
+    infinite_magic: bool,
+    infinite_goods: bool,
     player_hide: bool,
     player_silence: bool,
     no_death: bool,
@@ -69,8 +69,8 @@ impl RenderLoop {
         RenderLoop {
             config: Config::load_or_default(),
             no_stamina_consume: false,
-            no_mp_consume: false,
-            no_arrow_consume: false,
+            infinite_magic: false,
+            infinite_goods: false,
             player_hide: false,
             player_silence: false,
             no_death: false,
@@ -163,7 +163,8 @@ impl ImguiRenderLoop for RenderLoop {
             ui.push_style_color(imgui::StyleColor::FrameBgHovered, button_hovered);
         let _frame_bg_active_style =
             ui.push_style_color(imgui::StyleColor::FrameBgActive, button_color);
-        let _check_mark_style = ui.push_style_color(imgui::StyleColor::CheckMark, button_color);
+        let _check_mark_style =
+            ui.push_style_color(imgui::StyleColor::CheckMark, [1.0, 1.0, 1.0, 1.0]);
 
         // Process keybinds regardless of menu state
         if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
@@ -233,7 +234,6 @@ impl ImguiRenderLoop for RenderLoop {
             .position([16.0, 16.0], Condition::FirstUseEver)
             .draw_background(false)
             .build(|| {
-
                 ui.text(format!("HP {:?}", player.hp));
                 ui.text(format!("Stamina {:?}", player.stamina));
 
@@ -283,12 +283,12 @@ impl ImguiRenderLoop for RenderLoop {
                         ds1.set_no_stam_consume();
                     }
 
-                    if ui.checkbox("inf mp", &mut self.no_mp_consume) {
-                        ds1.set_no_mp_consume();
+                    if ui.checkbox("infinite magic", &mut self.infinite_magic) {
+                        ds1.set_all_no_magic_quantity_consume();
                     }
 
-                    if ui.checkbox("inf arrows", &mut self.no_arrow_consume) {
-                        ds1.set_no_arrow_consume();
+                    if ui.checkbox("infinite goods", &mut self.infinite_goods) {
+                        ds1.set_no_goods_consume();
                     }
 
                     if ui.checkbox("player hide", &mut self.player_hide) {
@@ -444,15 +444,12 @@ impl ImguiRenderLoop for RenderLoop {
                         bonfire.inject_bonfire_function(&mut ds1);
                     }
                 }
+
                 if ui.button("Fast quitout") {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
                 }
 
-                if ui.button("Give item") {
-                    ui.open_popup("give_item_popup");
-                }
-
-                if let Some(_popup) = ui.begin_popup("give_item_popup") {
+                if ui.collapsing_header("Give item", imgui::TreeNodeFlags::empty()) {
                     // Tab bar for selecting item type
                     if ui.radio_button("Items", &mut self.give_item_type, 0) {}
                     ui.same_line();
@@ -465,9 +462,6 @@ impl ImguiRenderLoop for RenderLoop {
                     // Items tab
                     if self.give_item_type == 0 {
                         ui.set_next_item_width(400.0);
-                        if ui.is_window_appearing() {
-                            ui.set_keyboard_focus_here();
-                        }
                         ui.input_text("Search", &mut self.item_search).build();
 
                         let item_data = Items::get_item_data();
@@ -518,9 +512,6 @@ impl ImguiRenderLoop for RenderLoop {
                     // Rings tab
                     if self.give_item_type == 1 {
                         ui.set_next_item_width(400.0);
-                        if ui.is_window_appearing() {
-                            ui.set_keyboard_focus_here();
-                        }
                         ui.input_text("Search", &mut self.ring_search).build();
 
                         let ring_data = Items::get_ring_data();
@@ -570,9 +561,6 @@ impl ImguiRenderLoop for RenderLoop {
                     // Weapons tab
                     if self.give_item_type == 2 {
                         ui.set_next_item_width(400.0);
-                        if ui.is_window_appearing() {
-                            ui.set_keyboard_focus_here();
-                        }
                         ui.input_text("Search", &mut self.weapon_search).build();
 
                         let weapon_data = Items::get_weapon_data();
