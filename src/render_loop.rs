@@ -278,11 +278,7 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
 
-                if ui.button("Debug Flags") {
-                    ui.open_popup("debug_flags_popup");
-                }
-
-                if let Some(_popup) = ui.begin_popup("debug_flags_popup") {
+                if ui.collapsing_header("Debug Flags", imgui::TreeNodeFlags::empty()) {
                     if ui.checkbox("inf stam", &mut self.no_stamina_consume) {
                         ds1.set_no_stam_consume();
                     }
@@ -336,14 +332,7 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
 
-                if ui.button("Stats") {
-                    ui.open_popup("stats_popup");
-                }
-                if (ui.button("Moveswap")) {
-                    player.moveswap(&mut ds1);
-                }
-
-                if let Some(_popup) = ui.begin_popup("stats_popup") {
+                if ui.collapsing_header("Stats", imgui::TreeNodeFlags::empty()) {
                     if (ui.input_int(
                         format!("Vitality {:?}", player.vitality),
                         &mut player.vitality,
@@ -403,14 +392,12 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
 
-                if ui.button("Select bonfire") {
-                    ui.open_popup("bonfire_warp_popup");
+                if (ui.button("Moveswap")) {
+                    player.moveswap(&mut ds1);
                 }
-                if let Some(_popup) = ui.begin_popup("bonfire_warp_popup") {
+
+                if ui.collapsing_header("Select bonfire", imgui::TreeNodeFlags::empty()) {
                     ui.set_next_item_width(400.0);
-                    if ui.is_window_appearing() {
-                        ui.set_keyboard_focus_here();
-                    }
                     ui.input_text("Search", &mut self.bonfire_search).build();
 
                     let selected_name = if self.selected_bonfire_id >= 0 {
