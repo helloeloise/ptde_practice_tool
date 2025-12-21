@@ -8,7 +8,7 @@ use crate::memory::constants::{CharData2, CharPosData};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
 use crate::ui::Items;
-
+use crate::ui::DebugInfo;
 #[cfg(windows)]
 use windows_sys::Win32::Foundation::RECT;
 #[cfg(windows)]
@@ -44,6 +44,10 @@ pub struct RenderLoop {
     no_update_ai: bool,
     disable_collision: bool,
     no_gravity: bool,
+    draw_hit: bool,
+    draw_direction: bool,
+    draw_counter: bool,
+    draw_stable_pos: bool,
     stored_positions: [(f32, f32, f32); 3],
     input_was_disabled: bool,
 
@@ -63,6 +67,9 @@ pub struct RenderLoop {
     weapon_upgrade_level: i32,
     selected_infusion_index: usize,
     give_item_type: usize, // 0 = items, 1 = rings, 2 = weapons
+    show_animation_popup: bool,
+    debug_info: crate::ui::DebugInfo,
+    anim_speed: f32,
 }
 impl RenderLoop {
     pub fn new() -> Self {
@@ -81,6 +88,10 @@ impl RenderLoop {
             no_update_ai: false,
             disable_collision: false,
             no_gravity: false,
+            draw_hit: false,
+            draw_direction: false,
+            draw_counter: false,
+            draw_stable_pos: false,
             stored_positions: [(0.0, 0.0, 0.0); 3],
             input_was_disabled: false,
             stored_bonfire: 0,
@@ -99,6 +110,9 @@ impl RenderLoop {
             weapon_upgrade_level: 0,
             selected_infusion_index: 0,
             give_item_type: 0,
+            show_animation_popup: false,
+            debug_info: crate::ui::DebugInfo::new(),
+            anim_speed: 1.0,
         }
     }
 }
@@ -109,6 +123,8 @@ impl ImguiRenderLoop for RenderLoop {
         let mut ds1 = instance.lock().unwrap();
         let mut player = Player::new();
         player.instantiate(&mut ds1);
+        self.debug_info.update(&ds1);
+        self.anim_speed = ds1.anim_data.read_f32_rel(Some(crate::memory::constants::AnimData::PLAY_SPEED));
         let mut bonfire = Bonfire::new();
         self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
 
@@ -124,7 +140,7 @@ impl ImguiRenderLoop for RenderLoop {
         // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
         let ui_wants_input =
-            io.want_capture_mouse || io.want_capture_keyboard || io.want_text_input;
+             io.want_capture_keyboard || io.want_text_input; // io.want_capture_mouse ||
 
         if ui_wants_input || self.menu_open {
             ds1.input_state.write_u8_rel(None, 0x0);
@@ -182,12 +198,14 @@ impl ImguiRenderLoop for RenderLoop {
         if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_gravity) {
             if ui.is_key_pressed(key) {
                 ds1.set_no_gravity();
+                self.no_gravity = !self.no_gravity;
             }
         }
 
         if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_collision) {
             if ui.is_key_pressed(key) {
                 ds1.set_disable_collision();
+                self.disable_collision = !self.disable_collision;
             }
         }
 
@@ -204,6 +222,7 @@ impl ImguiRenderLoop for RenderLoop {
         if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_update_ai) {
             if ui.is_key_pressed(key) {
                 ds1.set_no_update_ai();
+                self.no_update_ai = !self.no_update_ai;
             }
         }
 
@@ -225,32 +244,36 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
+        // Toggle debug info window with Keypad1
+        if ui.is_key_pressed(imgui::Key::Keypad1) {
+            self.debug_info.toggle();
+        }
+
+        // Debug Info Window - Toggle with Keypad1
+        self.debug_info.render_window(ui, &mut ds1);
+
         if !self.menu_open {
             return;
         }
 
-        ui.window("Hello hudhook")
+        ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
             .size([368.0, 568.0], Condition::FirstUseEver)
             .position([16.0, 16.0], Condition::FirstUseEver)
             .draw_background(false)
             .build(|| {
-                ui.text(format!("HP {:?}", player.hp));
-                ui.text(format!("Stamina {:?}", player.stamina));
-
-                ui.text(format!("Pos X {:?}", player.x_pos));
-                ui.text(format!("Pos Y {:?}", player.y_pos));
-                ui.text(format!("Pos Z {:?}", player.z_pos));
-
                 if ui.button("Eject") {
                     print!("test");
                     hudhook::eject();
                 }
 
-                if ui.button("Positions") {
-                    ui.open_popup("positions_popup");
+                ui.text("Animation Speed:");
+                ui.set_next_item_width(200.0);
+                if ui.input_float("##anim_speed", &mut self.anim_speed).build() {
+                    ds1.anim_data.write_f32_rel(Some(crate::memory::constants::AnimData::PLAY_SPEED), self.anim_speed);
                 }
+                ui.separator();
 
-                if let Some(_popup) = ui.begin_popup("positions_popup") {
+                if ui.collapsing_header("Positions", imgui::TreeNodeFlags::empty()) {
                     for i in 0..3 {
                         ui.text(format!(
                             "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}",
@@ -329,6 +352,18 @@ impl ImguiRenderLoop for RenderLoop {
 
                     if ui.checkbox("no gravity", &mut self.no_gravity) {
                         ds1.set_no_gravity();
+                    }
+
+                    if ui.checkbox("draw direction", &mut self.draw_direction) {
+                        ds1.set_draw_direction();
+                    }
+
+                    if ui.checkbox("draw counter", &mut self.draw_counter) {
+                        ds1.set_draw_counter();
+                    }
+
+                    if ui.checkbox("draw stable pos", &mut self.draw_stable_pos) {
+                        ds1.set_draw_stable_pos();
                     }
                 }
 

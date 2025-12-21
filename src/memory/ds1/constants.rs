@@ -65,7 +65,7 @@ pub struct CharFlags2;
 impl CharFlags2 {
     pub const NO_GOODS_CONSUME: usize = 0x01000000;
     pub const DRAW_COUNTER: usize = 0x00200000;
-    pub const DRAW_DIRECTION: usize = 0x00004000;
+    pub const DRAW_DIRECTION: usize = 0x00010000;
     pub const NO_UPDATE: usize = 0x00008000;
     pub const NO_ATTACK: usize = 0x00000100;
     pub const NO_MOVE: usize = 0x00000200;
@@ -74,10 +74,12 @@ impl CharFlags2 {
     pub const NO_DEAD: usize = 0x00000020;
     pub const NO_DAMAGE: usize = 0x00000040;
     pub const NO_HIT: usize = 0x00000080;
-    pub const DRAW_HIT: usize = 0x00000004;
-}
+    pub const DRAW_STABLE_POS: usize = 0x6c8;
 
+
+}
 pub struct CharMapData;
+
 
 #[allow(dead_code)]
 impl CharMapData {
@@ -132,8 +134,48 @@ impl CharData2 {
     pub const SOUL_LEVEL: usize = 0x88;
     pub const SOULS: usize = 0x8C;
     pub const HUMANITY: usize = 0x7C;
-    pub const STANCE: usize = 0x230;
     pub const INVENTORY_INDEX_START: usize = 0x1B8;
+    pub const EQUIP_LEFT_1_IDX: usize = 0x1D4;
+    pub const EQUIP_RIGHT_1_IDX: usize = 0x1D8;
+    pub const EQUIP_LEFT_2_IDX: usize = 0x1DC;
+    pub const EQUIP_RIGHT_2_IDX: usize = 0x1E0;
+    pub const EQUIP_ARROW_1_IDX: usize = 0x1E4;
+    pub const EQUIP_BOLT_1_IDX: usize = 0x1E8;
+    pub const EQUIP_ARROW_2_IDX: usize = 0x1EC;
+    pub const EQUIP_BOLT_2_IDX: usize = 0x1F0;
+    pub const EQUIP_HELMET_IDX: usize = 0x1F4;
+    pub const EQUIP_CHEST_IDX: usize = 0x1F8;
+    pub const EQUIP_GLOVE_IDX: usize = 0x1FC;
+    pub const EQUIP_PANTS_IDX: usize = 0x200;
+    pub const EQUIP_HAIR_IDX: usize = 0x204;
+    pub const EQUIP_RING_1_IDX: usize = 0x208;
+    pub const EQUIP_RING_2_IDX: usize = 0x20C;
+    pub const EQUIP_ITEM_1_IDX: usize = 0x210;
+    pub const EQUIP_ITEM_2_IDX: usize = 0x214;
+    pub const EQUIP_ITEM_3_IDX: usize = 0x218;
+    pub const EQUIP_ITEM_4_IDX: usize = 0x21C;
+    pub const EQUIP_ITEM_5_IDX: usize = 0x220;
+    pub const STANCE: usize = 0x230;
+    pub const EQUIP_LEFT_1_ID: usize = 0x24C;
+    pub const EQUIP_RIGHT_1_ID: usize = 0x250;
+    pub const EQUIP_LEFT_2_ID: usize = 0x254;
+    pub const EQUIP_RIGHT_2_ID: usize = 0x258;
+    pub const EQUIP_ARROW_1_ID: usize = 0x25C;
+    pub const EQUIP_BOLT_1_ID: usize = 0x260;
+    pub const EQUIP_ARROW_2_ID: usize = 0x264;
+    pub const EQUIP_BOLT_2_ID: usize = 0x268;
+    pub const EQUIP_HELMET_ID: usize = 0x26C;
+    pub const EQUIP_CHEST_ID: usize = 0x270;
+    pub const EQUIP_GLOVE_ID: usize = 0x274;
+    pub const EQUIP_PANTS_ID: usize = 0x278;
+    pub const EQUIP_HAIR_ID: usize = 0x27C;
+    pub const EQUIP_RING_1_ID: usize = 0x280;
+    pub const EQUIP_RING_2_ID: usize = 0x284;
+    pub const EQUIP_ITEM_1_ID: usize = 0x288;
+    pub const EQUIP_ITEM_2_ID: usize = 0x28C;
+    pub const EQUIP_ITEM_3_ID: usize = 0x290;
+    pub const EQUIP_ITEM_4_ID: usize = 0x294;
+    pub const EQUIP_ITEM_5_ID: usize = 0x298;
 }
 
 pub struct LevelUp;

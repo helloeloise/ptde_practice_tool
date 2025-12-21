@@ -17,6 +17,7 @@ pub struct Ds1 {
     pub compass: Pointer,                       // 0xC 0x15, 0x1E
     pub chr_data_1: Pointer,                    // 0x2, 0x0, 0x4, 0x0
     pub char_map_data: Pointer,                 // chr_data_1 (aob), 0x2, 0x0, 0x4, 0x0 0x2
+    pub anim_data: Pointer,
     pub chr_data_2: Pointer,
     pub char_pos_data: Pointer, // 0x1, 0x0, 0x8
     pub no_stam_consume: bool,
@@ -49,6 +50,7 @@ impl Ds1 {
             compass: Pointer::default(),
             chr_data_1: Pointer::default(),
             char_map_data: Pointer::default(),
+            anim_data: Pointer::default(),
             chr_data_2: Pointer::default(),
             char_pos_data: Pointer::default(),
             level_up: Pointer::default(),
@@ -96,6 +98,11 @@ impl Ds1 {
             self.char_map_data
                 .offsets
                 .push(CharData1::CHAR_MAP_DATA_PTR);
+
+            self.anim_data = self.char_map_data.clone();
+            self.anim_data
+                .offsets
+                .push(CharMapData::ANIM_DATA_PTR);
 
             self.char_pos_data = self.char_map_data.clone();
             self.char_pos_data
@@ -442,5 +449,57 @@ impl Ds1 {
         }
 
         no_goods_consume
+    }
+
+    
+
+    pub fn set_draw_direction(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        let draw_direction = (current_flags & CharFlags2::DRAW_DIRECTION as u32) != 0;
+
+        if draw_direction {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags & !(CharFlags2::DRAW_DIRECTION as u32),
+            );
+        } else {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags | CharFlags2::DRAW_DIRECTION as u32,
+            );
+        }
+
+        draw_direction
+    }
+
+    pub fn set_draw_counter(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        let draw_counter = (current_flags & CharFlags2::DRAW_COUNTER as u32) != 0;
+
+        if draw_counter {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags & !(CharFlags2::DRAW_COUNTER as u32),
+            );
+        } else {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags | CharFlags2::DRAW_COUNTER as u32,
+            );
+        }
+
+        draw_counter
+    }
+
+    pub fn set_draw_stable_pos(&mut self) -> bool {
+        let draw_stable_pos = self.chr_data_1.read_bool_rel(Some(CharFlags2::DRAW_STABLE_POS));
+
+        if draw_stable_pos {
+            self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x0);
+        } else {
+            self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x1);
+        }
+
+        draw_stable_pos
     }
 }
