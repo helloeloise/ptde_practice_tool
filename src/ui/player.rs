@@ -76,6 +76,26 @@ impl Player {
         self.inject_levelup_function(ds1);
     }
 
+    pub fn calculate_soul_level(&self, ds1: &Ds1) -> i32 {
+        let vitality = ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY));
+        let attunement = ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT));
+        let endurance = ds1.chr_data_2.read_i32_rel(Some(CharData2::ENDURANCE));
+        let strength = ds1.chr_data_2.read_i32_rel(Some(CharData2::STRENGTH));
+        let dexterity = ds1.chr_data_2.read_i32_rel(Some(CharData2::DEXTERITY));
+        let intelligence = ds1.chr_data_2.read_i32_rel(Some(CharData2::INTELLIGENCE));
+        let faith = ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH));
+        let resistance = ds1.chr_data_2.read_i32_rel(Some(CharData2::RESISTANCE));
+        
+        let total_stats = vitality + attunement + endurance + strength + dexterity + intelligence + faith + resistance;
+        let soul_level = total_stats - 81;
+        
+        println!("Stats - VIT: {}, ATT: {}, END: {}, STR: {}, DEX: {}, INT: {}, FTH: {}, RES: {}", 
+                 vitality, attunement, endurance, strength, dexterity, intelligence, faith, resistance);
+        println!("Total stats: {}, Calculated soul level: {}", total_stats, soul_level);
+        
+        soul_level
+    }
+
     pub fn inject_levelup_function(&mut self, ds1: &mut Ds1) {
         let stored_humanity = ds1.chr_data_2.read_i32_rel(Some(CharData2::HUMANITY));
         let level_up_fn_address = ds1.level_up.base_address;
@@ -84,7 +104,9 @@ impl Player {
 
         let level_up_codecave: i32 = code_cave as *const () as i32;
         println!("Ptr address: {:X}", level_up_codecave);
-        print!("Level up codecave address: {:X}", level_up_codecave);
+        println!("Level up codecave address: {:X}", level_up_codecave);
+        
+        // Write stats at compact offsets for the codecave
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x0).try_into().unwrap(),
             ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY)),
@@ -117,10 +139,19 @@ impl Player {
             (level_up_codecave + 0x1C).try_into().unwrap(),
             ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH)),
         );
+        
+        let calculated_level = self.calculate_soul_level(ds1);
+        println!("Writing calculated soul level: {}", calculated_level);
         ds1.process.write_i32_abs(
-            (level_up_codecave + 0x16c).try_into().unwrap(),
-            ds1.chr_data_2.read_i32_rel(Some(CharData2::SOUL_LEVEL)),
+            (level_up_codecave + 0x20).try_into().unwrap(),
+            calculated_level,
         );
+        
+        ds1.process.write_i32_abs(
+            (level_up_codecave + 0x2C).try_into().unwrap(),
+            ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS)),
+        );
+
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x178).try_into().unwrap(),
             ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS)),
@@ -131,10 +162,10 @@ impl Player {
             asm!(
                 "mov eax, {x}",
                 "mov ecx, {y}",
-                "call {z}",x = in(reg) level_up_codecave as i32, y = in(reg)level_up_codecave - 0x16C ,z = in(reg) level_up_fn_address as i32,
-
-
-
+                "call {z}",
+                x = in(reg) level_up_codecave as i32,
+                y = in(reg) level_up_codecave - 0x14C,
+                z = in(reg) level_up_fn_address as i32,
             );
         }
         ds1.chr_data_2

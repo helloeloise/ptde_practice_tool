@@ -130,6 +130,57 @@ impl ImguiRenderLoop for RenderLoop {
 
         let mut items_handler = Items::new();
 
+        // Synchronize checkbox states with game memory - checkboxes have priority
+        // If game memory differs from checkbox state, force the game to match the checkbox
+        if ds1.get_no_stam_consume() != self.no_stamina_consume {
+            ds1.set_no_stam_consume_to(self.no_stamina_consume);
+        }
+        if ds1.get_infinite_magic() != self.infinite_magic {
+            ds1.set_all_no_magic_quantity_consume_to(self.infinite_magic);
+        }
+        if ds1.get_infinite_goods() != self.infinite_goods {
+            ds1.set_no_goods_consume_to(self.infinite_goods);
+        }
+        if ds1.get_player_hide() != self.player_hide {
+            ds1.set_player_hide_to(self.player_hide);
+        }
+        if ds1.get_player_silence() != self.player_silence {
+            ds1.set_player_silence_to(self.player_silence);
+        }
+        if ds1.get_no_death() != self.no_death {
+            ds1.set_no_death_to(self.no_death);
+        }
+        if ds1.get_no_damage() != self.no_damage {
+            ds1.set_no_damage_to(self.no_damage);
+        }
+        if ds1.get_no_hit() != self.no_hit {
+            ds1.set_no_hit_to(self.no_hit);
+        }
+        if ds1.get_no_attack() != self.no_attack {
+            ds1.set_no_attack_to(self.no_attack);
+        }
+        if ds1.get_no_move() != self.no_move {
+            ds1.set_no_move_to(self.no_move);
+        }
+        if ds1.get_no_update_ai() != self.no_update_ai {
+            ds1.set_no_update_ai_to(self.no_update_ai);
+        }
+        if ds1.get_disable_collision() != self.disable_collision {
+            ds1.set_disable_collision_to(self.disable_collision);
+        }
+        if ds1.get_no_gravity() != self.no_gravity {
+            ds1.set_no_gravity_to(self.no_gravity);
+        }
+        if ds1.get_draw_direction() != self.draw_direction {
+            ds1.set_draw_direction_to(self.draw_direction);
+        }
+        if ds1.get_draw_counter() != self.draw_counter {
+            ds1.set_draw_counter_to(self.draw_counter);
+        }
+        if ds1.get_draw_stable_pos() != self.draw_stable_pos {
+            ds1.set_draw_stable_pos_to(self.draw_stable_pos);
+        }
+
         // Check if toggle_menu key is pressed
         if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_menu) {
             if ui.is_key_pressed(key) {
@@ -244,9 +295,101 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
-        // Toggle debug info window with Keypad1
-        if ui.is_key_pressed(imgui::Key::Keypad1) {
-            self.debug_info.toggle();
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_stamina) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_stam_consume();
+                self.no_stamina_consume = !self.no_stamina_consume;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_magic) {
+            if ui.is_key_pressed(key) {
+                ds1.set_all_no_magic_quantity_consume();
+                self.infinite_magic = !self.infinite_magic;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_goods) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_goods_consume();
+                self.infinite_goods = !self.infinite_goods;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_hide) {
+            if ui.is_key_pressed(key) {
+                ds1.set_player_hide();
+                self.player_hide = !self.player_hide;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_silence) {
+            if ui.is_key_pressed(key) {
+                ds1.set_player_silence();
+                self.player_silence = !self.player_silence;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_death) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_death();
+                self.no_death = !self.no_death;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_damage) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_damage();
+                self.no_damage = !self.no_damage;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_hit) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_hit();
+                self.no_hit = !self.no_hit;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_attack) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_attack();
+                self.no_attack = !self.no_attack;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_move) {
+            if ui.is_key_pressed(key) {
+                ds1.set_no_move();
+                self.no_move = !self.no_move;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_direction) {
+            if ui.is_key_pressed(key) {
+                ds1.set_draw_direction();
+                self.draw_direction = !self.draw_direction;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_counter) {
+            if ui.is_key_pressed(key) {
+                ds1.set_draw_counter();
+                self.draw_counter = !self.draw_counter;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_stable_pos) {
+            if ui.is_key_pressed(key) {
+                ds1.set_draw_stable_pos();
+                self.draw_stable_pos = !self.draw_stable_pos;
+            }
+        }
+
+        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_debug_info) {
+            if ui.is_key_pressed(key) {
+                self.debug_info.toggle();
+            }
         }
 
         // Debug Info Window - Toggle with Keypad1

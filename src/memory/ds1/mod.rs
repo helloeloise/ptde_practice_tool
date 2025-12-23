@@ -244,6 +244,67 @@ impl Ds1 {
         return no_update_ai;
     }
 
+    pub fn get_infinite_magic(&mut self) -> bool {
+        self.all_no_magic_quantity_consume.read_bool_rel(Some(0))
+    }
+
+    pub fn get_infinite_goods(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        (current_flags & CharFlags2::NO_GOODS_CONSUME as u32) != 0
+    }
+
+    pub fn get_player_hide(&mut self) -> bool {
+        self.chr_dbg.read_bool_rel(Some(ChrDbg::PLAYER_HIDE))
+    }
+
+    pub fn get_player_silence(&mut self) -> bool {
+        self.chr_dbg.read_bool_rel(Some(ChrDbg::PLAYER_SILENCE))
+    }
+
+    pub fn get_no_death(&mut self) -> bool {
+        self.no_death_pointer.read_bool_rel(Some(0x0))
+    }
+
+    pub fn get_no_damage(&mut self) -> bool {
+        self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_DAMAGE))
+    }
+
+    pub fn get_no_hit(&mut self) -> bool {
+        self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_HIT))
+    }
+
+    pub fn get_no_attack(&mut self) -> bool {
+        self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_ATTACK))
+    }
+
+    pub fn get_no_move(&mut self) -> bool {
+        self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_MOVE))
+    }
+
+    pub fn get_disable_collision(&mut self) -> bool {
+        let current_flags = self.char_map_data.read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
+        (current_flags & CharMapFlags::DISABLE_MAP_HIT as u32) != 0
+    }
+
+    pub fn get_no_gravity(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_1));
+        (current_flags & CharFlags1::SET_DISABLE_GRAVITY as u32) != 0
+    }
+
+    pub fn get_draw_direction(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        (current_flags & CharFlags2::DRAW_DIRECTION as u32) != 0
+    }
+
+    pub fn get_draw_counter(&mut self) -> bool {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        (current_flags & CharFlags2::DRAW_COUNTER as u32) != 0
+    }
+
+    pub fn get_draw_stable_pos(&mut self) -> bool {
+        self.chr_data_1.read_bool_rel(Some(CharFlags2::DRAW_STABLE_POS))
+    }
+
     pub fn set_no_stam_consume(&mut self) -> bool {
         let no_stamina_consume = self.get_no_stam_consume();
         if no_stamina_consume == false {
@@ -254,6 +315,10 @@ impl Ds1 {
                 .write_u8_rel(Some(ChrDbg::ALL_NO_STAMINA_CONSUME), 0x0);
         }
         no_stamina_consume
+    }
+
+    pub fn set_no_stam_consume_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_STAMINA_CONSUME), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_update_ai(&mut self) -> bool {
@@ -268,14 +333,22 @@ impl Ds1 {
         no_update_ai
     }
 
+    pub fn set_no_update_ai_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_UPDATE_AI), if value { 0x1 } else { 0x0 });
+    }
+
     pub fn set_no_death(&mut self) -> bool {
-        let no_death = self.chr_dbg.read_bool_rel(Some(0x0));
+        let no_death = self.get_no_death();
         if no_death == false {
             self.no_death_pointer.write_u8_rel(Some(0x0), 0x1);
         } else {
             self.no_death_pointer.write_u8_rel(Some(0x0), 0x0);
         }
         no_death
+    }
+
+    pub fn set_no_death_to(&mut self, value: bool) {
+        self.no_death_pointer.write_u8_rel(Some(0x0), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_mp_consume(&mut self) -> bool {
@@ -305,7 +378,7 @@ impl Ds1 {
     }
 
     pub fn set_player_hide(&mut self) -> bool {
-        let player_hide = self.chr_dbg.read_bool_rel(Some(ChrDbg::PLAYER_HIDE));
+        let player_hide = self.get_player_hide();
         if player_hide == false {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_HIDE), 0x1);
         } else {
@@ -314,8 +387,12 @@ impl Ds1 {
         player_hide
     }
 
+    pub fn set_player_hide_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_HIDE), if value { 0x1 } else { 0x0 });
+    }
+
     pub fn set_player_silence(&mut self) -> bool {
-        let player_silence = self.chr_dbg.read_bool_rel(Some(ChrDbg::PLAYER_SILENCE));
+        let player_silence = self.get_player_silence();
         if player_silence == false {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_SILENCE), 0x1);
         } else {
@@ -324,8 +401,12 @@ impl Ds1 {
         player_silence
     }
 
+    pub fn set_player_silence_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_SILENCE), if value { 0x1 } else { 0x0 });
+    }
+
     pub fn set_no_damage(&mut self) -> bool {
-        let no_damage = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_DAMAGE));
+        let no_damage = self.get_no_damage();
         if no_damage == false {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_DAMAGE), 0x1);
         } else {
@@ -334,8 +415,12 @@ impl Ds1 {
         no_damage
     }
 
+    pub fn set_no_damage_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_DAMAGE), if value { 0x1 } else { 0x0 });
+    }
+
     pub fn set_no_hit(&mut self) -> bool {
-        let no_hit = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_HIT));
+        let no_hit = self.get_no_hit();
         if no_hit == false {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_HIT), 0x1);
         } else {
@@ -344,8 +429,12 @@ impl Ds1 {
         no_hit
     }
 
+    pub fn set_no_hit_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_HIT), if value { 0x1 } else { 0x0 });
+    }
+
     pub fn set_no_attack(&mut self) -> bool {
-        let no_attack = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_ATTACK));
+        let no_attack = self.get_no_attack();
         if no_attack == false {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_ATTACK), 0x1);
         } else {
@@ -354,14 +443,22 @@ impl Ds1 {
         no_attack
     }
 
+    pub fn set_no_attack_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_ATTACK), if value { 0x1 } else { 0x0 });
+    }
+
     pub fn set_no_move(&mut self) -> bool {
-        let no_move = self.chr_dbg.read_bool_rel(Some(ChrDbg::ALL_NO_MOVE));
+        let no_move = self.get_no_move();
         if no_move == false {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), 0x1);
         } else {
             self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), 0x0);
         }
         no_move
+    }
+
+    pub fn set_no_move_to(&mut self, value: bool) {
+        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), if value { 0x1 } else { 0x0 });
     }
 
     pub fn teleport_player(&mut self, x: f32, y: f32, z: f32) {
@@ -397,6 +494,21 @@ impl Ds1 {
         collision_disabled
     }
 
+    pub fn set_disable_collision_to(&mut self, value: bool) {
+        let current_flags = self.char_map_data.read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
+        if value {
+            self.char_map_data.write_u32_rel(
+                Some(CharMapData::CHAR_MAP_FLAGS),
+                current_flags | CharMapFlags::DISABLE_MAP_HIT as u32,
+            );
+        } else {
+            self.char_map_data.write_u32_rel(
+                Some(CharMapData::CHAR_MAP_FLAGS),
+                current_flags & !(CharMapFlags::DISABLE_MAP_HIT as u32),
+            );
+        }
+    }
+
     pub fn set_no_gravity(&mut self) -> bool {
         let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_1));
         let gravity_disabled = (current_flags & CharFlags1::SET_DISABLE_GRAVITY as u32) != 0;
@@ -418,8 +530,23 @@ impl Ds1 {
         gravity_disabled
     }
 
+    pub fn set_no_gravity_to(&mut self, value: bool) {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_1));
+        if value {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_1),
+                current_flags | CharFlags1::SET_DISABLE_GRAVITY as u32,
+            );
+        } else {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_1),
+                current_flags & !(CharFlags1::SET_DISABLE_GRAVITY as u32),
+            );
+        }
+    }
+
     pub fn set_all_no_magic_quantity_consume(&mut self) -> bool {
-        let no_magic_qty_consume = self.all_no_magic_quantity_consume.read_bool_rel(Some(0));
+        let no_magic_qty_consume = self.get_infinite_magic();
         if no_magic_qty_consume == false {
             self.all_no_magic_quantity_consume
                 .write_u8_rel(Some(0), 0x1);
@@ -428,6 +555,10 @@ impl Ds1 {
                 .write_u8_rel(Some(0), 0x0);
         }
         no_magic_qty_consume
+    }
+
+    pub fn set_all_no_magic_quantity_consume_to(&mut self, value: bool) {
+        self.all_no_magic_quantity_consume.write_u8_rel(Some(0), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_goods_consume(&mut self) -> bool {
@@ -451,6 +582,21 @@ impl Ds1 {
         no_goods_consume
     }
 
+    pub fn set_no_goods_consume_to(&mut self, value: bool) {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        if value {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags | CharFlags2::NO_GOODS_CONSUME as u32,
+            );
+        } else {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags & !(CharFlags2::NO_GOODS_CONSUME as u32),
+            );
+        }
+    }
+
     
 
     pub fn set_draw_direction(&mut self) -> bool {
@@ -472,6 +618,21 @@ impl Ds1 {
         draw_direction
     }
 
+    pub fn set_draw_direction_to(&mut self, value: bool) {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        if value {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags | CharFlags2::DRAW_DIRECTION as u32,
+            );
+        } else {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags & !(CharFlags2::DRAW_DIRECTION as u32),
+            );
+        }
+    }
+
     pub fn set_draw_counter(&mut self) -> bool {
         let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
         let draw_counter = (current_flags & CharFlags2::DRAW_COUNTER as u32) != 0;
@@ -491,8 +652,23 @@ impl Ds1 {
         draw_counter
     }
 
+    pub fn set_draw_counter_to(&mut self, value: bool) {
+        let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
+        if value {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags | CharFlags2::DRAW_COUNTER as u32,
+            );
+        } else {
+            self.chr_data_1.write_u32_rel(
+                Some(CharData1::CHAR_FLAGS_2),
+                current_flags & !(CharFlags2::DRAW_COUNTER as u32),
+            );
+        }
+    }
+
     pub fn set_draw_stable_pos(&mut self) -> bool {
-        let draw_stable_pos = self.chr_data_1.read_bool_rel(Some(CharFlags2::DRAW_STABLE_POS));
+        let draw_stable_pos = self.get_draw_stable_pos();
 
         if draw_stable_pos {
             self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x0);
@@ -501,5 +677,9 @@ impl Ds1 {
         }
 
         draw_stable_pos
+    }
+
+    pub fn set_draw_stable_pos_to(&mut self, value: bool) {
+        self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), if value { 0x1 } else { 0x0 });
     }
 }

@@ -11,6 +11,7 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Keybinds {
     pub toggle_menu: String,
+    pub toggle_debug_info: String,
     pub quitout: String,
     pub moveswap: String,
     pub toggle_no_gravity: String,
@@ -20,6 +21,19 @@ pub struct Keybinds {
     pub teleport_down: String,
     pub teleport_up: String,
     pub store_position_1: String,
+    pub toggle_no_stamina: String,
+    pub toggle_infinite_magic: String,
+    pub toggle_infinite_goods: String,
+    pub toggle_player_hide: String,
+    pub toggle_player_silence: String,
+    pub toggle_no_death: String,
+    pub toggle_no_damage: String,
+    pub toggle_no_hit: String,
+    pub toggle_no_attack: String,
+    pub toggle_no_move: String,
+    pub toggle_draw_direction: String,
+    pub toggle_draw_counter: String,
+    pub toggle_draw_stable_pos: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -82,16 +96,30 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             keybinds: Keybinds {
-                toggle_menu: "Keypad0".to_string(),
-                quitout: "Alpha3".to_string(),
-                moveswap: "Keypad2".to_string(),
-                toggle_no_gravity: "Keypad7".to_string(),
-                toggle_no_collision: "Keypad9".to_string(),
-                load_position_1: "Alpha4".to_string(),
-                toggle_no_update_ai: "Keypad5".to_string(),
-                teleport_down: "Alpha7".to_string(),
-                teleport_up: "Alpha8".to_string(),
-                store_position_1: "Keypad8".to_string(),
+                toggle_menu: "".to_string(),
+                toggle_debug_info: "".to_string(),
+                quitout: "".to_string(),
+                moveswap: "".to_string(),
+                toggle_no_gravity: "".to_string(),
+                toggle_no_collision: "".to_string(),
+                load_position_1: "".to_string(),
+                toggle_no_update_ai: "".to_string(),
+                teleport_down: "".to_string(),
+                teleport_up: "".to_string(),
+                store_position_1: "".to_string(),
+                toggle_no_stamina: "".to_string(),
+                toggle_infinite_magic: "".to_string(),
+                toggle_infinite_goods: "".to_string(),
+                toggle_player_hide: "".to_string(),
+                toggle_player_silence: "".to_string(),
+                toggle_no_death: "".to_string(),
+                toggle_no_damage: "".to_string(),
+                toggle_no_hit: "".to_string(),
+                toggle_no_attack: "".to_string(),
+                toggle_no_move: "".to_string(),
+                toggle_draw_direction: "".to_string(),
+                toggle_draw_counter: "".to_string(),
+                toggle_draw_stable_pos: "".to_string(),
             },
             colors: ColorScheme {
                 button: ColorRGB {

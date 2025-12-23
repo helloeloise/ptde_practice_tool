@@ -5,8 +5,10 @@
 # Available keys: Keypad0-9, Alpha0-9, F1-F12, LeftCtrl, RightCtrl, LeftShift, RightShift
 # LeftAlt, RightAlt, Space, Enter, Escape, Tab, Backspace, Insert, Delete, Home, End
 # PageUp, PageDown, LeftArrow, RightArrow, UpArrow, DownArrow
+# Leave empty ("") to disable a keybind
 
 toggle_menu = "Keypad0"              # Toggle the main menu
+toggle_debug_info = "Keypad1"        # Toggle debug info window
 quitout = "Alpha3"                   # Quitout (return to main menu)
 moveswap = "Keypad2"                 # Moveswap
 toggle_no_gravity = "Keypad7"        # Toggle no gravity
@@ -16,6 +18,21 @@ toggle_no_update_ai = "Keypad5"      # Toggle no AI update
 teleport_down = "Alpha7"             # Teleport down
 teleport_up = "Alpha8"               # Teleport up
 store_position_1 = "Keypad8"         # Store current position (slot 1)
+
+# Debug Flags - Set these to enable hotkeys for debug features
+toggle_no_stamina = ""               # Toggle infinite stamina
+toggle_infinite_magic = ""           # Toggle infinite magic/spell uses
+toggle_infinite_goods = ""           # Toggle infinite consumable items
+toggle_player_hide = ""              # Toggle player invisibility
+toggle_player_silence = ""           # Toggle player silence (no sound)
+toggle_no_death = ""                 # Toggle no death
+toggle_no_damage = ""                # Toggle no damage
+toggle_no_hit = ""                   # Toggle no hit (enemies don't detect hits)
+toggle_no_attack = ""                # Toggle no attack
+toggle_no_move = ""                  # Toggle no move
+toggle_draw_direction = ""           # Toggle draw direction visualization
+toggle_draw_counter = ""             # Toggle draw counter visualization
+toggle_draw_stable_pos = ""          # Toggle draw stable position visualization
 
 [colors]
 # RGB values (0-255)
