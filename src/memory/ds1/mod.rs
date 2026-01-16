@@ -100,9 +100,7 @@ impl Ds1 {
                 .push(CharData1::CHAR_MAP_DATA_PTR);
 
             self.anim_data = self.char_map_data.clone();
-            self.anim_data
-                .offsets
-                .push(CharMapData::ANIM_DATA_PTR);
+            self.anim_data.offsets.push(CharMapData::ANIM_DATA_PTR);
 
             self.char_pos_data = self.char_map_data.clone();
             self.char_pos_data
@@ -232,6 +230,11 @@ impl Ds1 {
         x_pos
     }
 
+    pub fn get_angle(&self) -> f32 {
+        self.char_pos_data
+            .read_f32_rel(Some(CharPosData::POS_ANGLE))
+    }
+
     pub fn get_no_stam_consume(&mut self) -> bool {
         let no_stamina_consume = self
             .chr_dbg
@@ -282,7 +285,9 @@ impl Ds1 {
     }
 
     pub fn get_disable_collision(&mut self) -> bool {
-        let current_flags = self.char_map_data.read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
+        let current_flags = self
+            .char_map_data
+            .read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
         (current_flags & CharMapFlags::DISABLE_MAP_HIT as u32) != 0
     }
 
@@ -302,7 +307,8 @@ impl Ds1 {
     }
 
     pub fn get_draw_stable_pos(&mut self) -> bool {
-        self.chr_data_1.read_bool_rel(Some(CharFlags2::DRAW_STABLE_POS))
+        self.chr_data_1
+            .read_bool_rel(Some(CharFlags2::DRAW_STABLE_POS))
     }
 
     pub fn set_no_stam_consume(&mut self) -> bool {
@@ -318,7 +324,10 @@ impl Ds1 {
     }
 
     pub fn set_no_stam_consume_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_STAMINA_CONSUME), if value { 0x1 } else { 0x0 });
+        self.chr_dbg.write_u8_rel(
+            Some(ChrDbg::ALL_NO_STAMINA_CONSUME),
+            if value { 0x1 } else { 0x0 },
+        );
     }
 
     pub fn set_no_update_ai(&mut self) -> bool {
@@ -334,7 +343,10 @@ impl Ds1 {
     }
 
     pub fn set_no_update_ai_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_UPDATE_AI), if value { 0x1 } else { 0x0 });
+        self.chr_dbg.write_u8_rel(
+            Some(ChrDbg::ALL_NO_UPDATE_AI),
+            if value { 0x1 } else { 0x0 },
+        );
     }
 
     pub fn set_no_death(&mut self) -> bool {
@@ -348,7 +360,8 @@ impl Ds1 {
     }
 
     pub fn set_no_death_to(&mut self, value: bool) {
-        self.no_death_pointer.write_u8_rel(Some(0x0), if value { 0x1 } else { 0x0 });
+        self.no_death_pointer
+            .write_u8_rel(Some(0x0), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_mp_consume(&mut self) -> bool {
@@ -388,7 +401,8 @@ impl Ds1 {
     }
 
     pub fn set_player_hide_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_HIDE), if value { 0x1 } else { 0x0 });
+        self.chr_dbg
+            .write_u8_rel(Some(ChrDbg::PLAYER_HIDE), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_player_silence(&mut self) -> bool {
@@ -402,7 +416,8 @@ impl Ds1 {
     }
 
     pub fn set_player_silence_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::PLAYER_SILENCE), if value { 0x1 } else { 0x0 });
+        self.chr_dbg
+            .write_u8_rel(Some(ChrDbg::PLAYER_SILENCE), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_damage(&mut self) -> bool {
@@ -416,7 +431,8 @@ impl Ds1 {
     }
 
     pub fn set_no_damage_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_DAMAGE), if value { 0x1 } else { 0x0 });
+        self.chr_dbg
+            .write_u8_rel(Some(ChrDbg::ALL_NO_DAMAGE), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_hit(&mut self) -> bool {
@@ -430,7 +446,8 @@ impl Ds1 {
     }
 
     pub fn set_no_hit_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_HIT), if value { 0x1 } else { 0x0 });
+        self.chr_dbg
+            .write_u8_rel(Some(ChrDbg::ALL_NO_HIT), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_attack(&mut self) -> bool {
@@ -444,7 +461,8 @@ impl Ds1 {
     }
 
     pub fn set_no_attack_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_ATTACK), if value { 0x1 } else { 0x0 });
+        self.chr_dbg
+            .write_u8_rel(Some(ChrDbg::ALL_NO_ATTACK), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_move(&mut self) -> bool {
@@ -458,16 +476,19 @@ impl Ds1 {
     }
 
     pub fn set_no_move_to(&mut self, value: bool) {
-        self.chr_dbg.write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), if value { 0x1 } else { 0x0 });
+        self.chr_dbg
+            .write_u8_rel(Some(ChrDbg::ALL_NO_MOVE), if value { 0x1 } else { 0x0 });
     }
 
-    pub fn teleport_player(&mut self, x: f32, y: f32, z: f32) {
+    pub fn teleport_player(&mut self, x: f32, y: f32, z: f32, angle: f32) {
         self.char_map_data
             .write_f32_rel(Some(CharMapData::WARP_X), x);
         self.char_map_data
             .write_f32_rel(Some(CharMapData::WARP_Y), y);
         self.char_map_data
             .write_f32_rel(Some(CharMapData::WARP_Z), z);
+        self.char_map_data
+            .write_f32_rel(Some(CharMapData::WARP_ANGLE), angle);
         self.char_map_data.write_u32_rel(Some(CharMapData::WARP), 1);
     }
 
@@ -495,7 +516,9 @@ impl Ds1 {
     }
 
     pub fn set_disable_collision_to(&mut self, value: bool) {
-        let current_flags = self.char_map_data.read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
+        let current_flags = self
+            .char_map_data
+            .read_u32_rel(Some(CharMapData::CHAR_MAP_FLAGS));
         if value {
             self.char_map_data.write_u32_rel(
                 Some(CharMapData::CHAR_MAP_FLAGS),
@@ -558,7 +581,8 @@ impl Ds1 {
     }
 
     pub fn set_all_no_magic_quantity_consume_to(&mut self, value: bool) {
-        self.all_no_magic_quantity_consume.write_u8_rel(Some(0), if value { 0x1 } else { 0x0 });
+        self.all_no_magic_quantity_consume
+            .write_u8_rel(Some(0), if value { 0x1 } else { 0x0 });
     }
 
     pub fn set_no_goods_consume(&mut self) -> bool {
@@ -596,8 +620,6 @@ impl Ds1 {
             );
         }
     }
-
-    
 
     pub fn set_draw_direction(&mut self) -> bool {
         let current_flags = self.chr_data_1.read_u32_rel(Some(CharData1::CHAR_FLAGS_2));
@@ -671,15 +693,20 @@ impl Ds1 {
         let draw_stable_pos = self.get_draw_stable_pos();
 
         if draw_stable_pos {
-            self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x0);
+            self.chr_data_1
+                .write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x0);
         } else {
-            self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x1);
+            self.chr_data_1
+                .write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), 0x1);
         }
 
         draw_stable_pos
     }
 
     pub fn set_draw_stable_pos_to(&mut self, value: bool) {
-        self.chr_data_1.write_u8_rel(Some(CharFlags2::DRAW_STABLE_POS), if value { 0x1 } else { 0x0 });
+        self.chr_data_1.write_u8_rel(
+            Some(CharFlags2::DRAW_STABLE_POS),
+            if value { 0x1 } else { 0x0 },
+        );
     }
 }

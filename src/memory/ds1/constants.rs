@@ -39,6 +39,9 @@ impl CharData1 {
     pub const STAMINA: usize = 0x2E4;
     pub const CHAR_FLAGS_2: usize = 0x3C4;
     pub const STORED_ITEM: usize = 0x628;
+    pub const CURRENT_POISE: usize = 0x1c0;
+    pub const MAX_POISE: usize = 0x1c4;
+    pub const POISE_RECOVERY_RATE: usize = 0x1cc;
 }
 
 pub struct CharFlags1;
@@ -75,11 +78,8 @@ impl CharFlags2 {
     pub const NO_DAMAGE: usize = 0x00000040;
     pub const NO_HIT: usize = 0x00000080;
     pub const DRAW_STABLE_POS: usize = 0x6c8;
-
-
 }
 pub struct CharMapData;
-
 
 #[allow(dead_code)]
 impl CharMapData {
@@ -90,7 +90,7 @@ impl CharMapData {
     pub const WARP_X: usize = 0xD0;
     pub const WARP_Y: usize = 0xD4;
     pub const WARP_Z: usize = 0xD8;
-    pub const WARP_ANGLE: usize = 0xD4;
+    pub const WARP_ANGLE: usize = 0xDC;
 }
 
 pub struct CharMapFlags;

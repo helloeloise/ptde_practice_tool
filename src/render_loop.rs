@@ -7,8 +7,8 @@ use crate::config::{Config, string_to_imgui_key};
 use crate::memory::constants::{CharData2, CharPosData};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
-use crate::ui::Items;
 use crate::ui::DebugInfo;
+use crate::ui::Items;
 #[cfg(windows)]
 use windows_sys::Win32::Foundation::RECT;
 #[cfg(windows)]
@@ -48,7 +48,7 @@ pub struct RenderLoop {
     draw_direction: bool,
     draw_counter: bool,
     draw_stable_pos: bool,
-    stored_positions: [(f32, f32, f32); 3],
+    stored_positions: [(f32, f32, f32, f32, i32); 3],
     input_was_disabled: bool,
 
     stored_bonfire: i32,
@@ -70,6 +70,8 @@ pub struct RenderLoop {
     show_animation_popup: bool,
     debug_info: crate::ui::DebugInfo,
     anim_speed: f32,
+    saved_anim_speed: f32,
+    anim_speed_toggled: bool,
 }
 impl RenderLoop {
     pub fn new() -> Self {
@@ -92,7 +94,7 @@ impl RenderLoop {
             draw_direction: false,
             draw_counter: false,
             draw_stable_pos: false,
-            stored_positions: [(0.0, 0.0, 0.0); 3],
+            stored_positions: [(0.0, 0.0, 0.0, 0.0, 0); 3],
             input_was_disabled: false,
             stored_bonfire: 0,
             selected_bonfire_id: -1,
@@ -113,6 +115,8 @@ impl RenderLoop {
             show_animation_popup: false,
             debug_info: crate::ui::DebugInfo::new(),
             anim_speed: 1.0,
+            saved_anim_speed: 1.0,
+            anim_speed_toggled: false,
         }
     }
 }
@@ -124,61 +128,60 @@ impl ImguiRenderLoop for RenderLoop {
         let mut player = Player::new();
         player.instantiate(&mut ds1);
         self.debug_info.update(&ds1);
-        self.anim_speed = ds1.anim_data.read_f32_rel(Some(crate::memory::constants::AnimData::PLAY_SPEED));
         let mut bonfire = Bonfire::new();
         self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
 
         let mut items_handler = Items::new();
 
-        // Synchronize checkbox states with game memory - checkboxes have priority
-        // If game memory differs from checkbox state, force the game to match the checkbox
-        if ds1.get_no_stam_consume() != self.no_stamina_consume {
-            ds1.set_no_stam_consume_to(self.no_stamina_consume);
+        // Enforce checkbox states on game memory (checkboxes are source of truth)
+        // This ensures flags stay active even if the game resets them (e.g., when going to main menu)
+        if self.no_stamina_consume {
+            ds1.set_no_stam_consume_to(true);
         }
-        if ds1.get_infinite_magic() != self.infinite_magic {
-            ds1.set_all_no_magic_quantity_consume_to(self.infinite_magic);
+        if self.infinite_magic {
+            ds1.set_all_no_magic_quantity_consume_to(true);
         }
-        if ds1.get_infinite_goods() != self.infinite_goods {
-            ds1.set_no_goods_consume_to(self.infinite_goods);
+        if self.infinite_goods {
+            ds1.set_no_goods_consume_to(true);
         }
-        if ds1.get_player_hide() != self.player_hide {
-            ds1.set_player_hide_to(self.player_hide);
+        if self.player_hide {
+            ds1.set_player_hide_to(true);
         }
-        if ds1.get_player_silence() != self.player_silence {
-            ds1.set_player_silence_to(self.player_silence);
+        if self.player_silence {
+            ds1.set_player_silence_to(true);
         }
-        if ds1.get_no_death() != self.no_death {
-            ds1.set_no_death_to(self.no_death);
+        if self.no_death {
+            ds1.set_no_death_to(true);
         }
-        if ds1.get_no_damage() != self.no_damage {
-            ds1.set_no_damage_to(self.no_damage);
+        if self.no_damage {
+            ds1.set_no_damage_to(true);
         }
-        if ds1.get_no_hit() != self.no_hit {
-            ds1.set_no_hit_to(self.no_hit);
+        if self.no_hit {
+            ds1.set_no_hit_to(true);
         }
-        if ds1.get_no_attack() != self.no_attack {
-            ds1.set_no_attack_to(self.no_attack);
+        if self.no_attack {
+            ds1.set_no_attack_to(true);
         }
-        if ds1.get_no_move() != self.no_move {
-            ds1.set_no_move_to(self.no_move);
+        if self.no_move {
+            ds1.set_no_move_to(true);
         }
-        if ds1.get_no_update_ai() != self.no_update_ai {
-            ds1.set_no_update_ai_to(self.no_update_ai);
+        if self.no_update_ai {
+            ds1.set_no_update_ai_to(true);
         }
-        if ds1.get_disable_collision() != self.disable_collision {
-            ds1.set_disable_collision_to(self.disable_collision);
+        if self.disable_collision {
+            ds1.set_disable_collision_to(true);
         }
-        if ds1.get_no_gravity() != self.no_gravity {
-            ds1.set_no_gravity_to(self.no_gravity);
+        if self.no_gravity {
+            ds1.set_no_gravity_to(true);
         }
-        if ds1.get_draw_direction() != self.draw_direction {
-            ds1.set_draw_direction_to(self.draw_direction);
+        if self.draw_direction {
+            ds1.set_draw_direction_to(true);
         }
-        if ds1.get_draw_counter() != self.draw_counter {
-            ds1.set_draw_counter_to(self.draw_counter);
+        if self.draw_counter {
+            ds1.set_draw_counter_to(true);
         }
-        if ds1.get_draw_stable_pos() != self.draw_stable_pos {
-            ds1.set_draw_stable_pos_to(self.draw_stable_pos);
+        if self.draw_stable_pos {
+            ds1.set_draw_stable_pos_to(true);
         }
 
         // Check if toggle_menu key is pressed
@@ -190,9 +193,9 @@ impl ImguiRenderLoop for RenderLoop {
 
         // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
-        let ui_wants_input =
-             io.want_capture_keyboard || io.want_text_input; // io.want_capture_mouse ||
+        let ui_wants_input = io.want_capture_keyboard || io.want_text_input;
 
+        // Disable game input when menu is open OR when actively typing/interacting with UI
         if ui_wants_input || self.menu_open {
             ds1.input_state.write_u8_rel(None, 0x0);
             if !self.input_was_disabled {
@@ -209,7 +212,14 @@ impl ImguiRenderLoop for RenderLoop {
         let button_color = self.config.colors.button.to_float4();
         let button_hovered = self.config.colors.button_hovered.to_float4();
         let button_active = self.config.colors.button_active.to_float4();
+        let text_color = self.config.colors.text.to_float4();
 
+        let _text_style = ui.push_style_color(imgui::StyleColor::Text, text_color);
+        let _text_disabled_style =
+            ui.push_style_color(imgui::StyleColor::TextDisabled, [0.0, 0.0, 0.0, 1.0]);
+        let _border_style = ui.push_style_color(imgui::StyleColor::Border, [0.0, 0.0, 0.0, 1.0]);
+        let _border_shadow_style =
+            ui.push_style_color(imgui::StyleColor::BorderShadow, [0.0, 0.0, 0.0, 0.5]);
         let _button_style = ui.push_style_color(imgui::StyleColor::Button, button_color);
         let _button_hovered_style =
             ui.push_style_color(imgui::StyleColor::ButtonHovered, button_hovered);
@@ -231,204 +241,312 @@ impl ImguiRenderLoop for RenderLoop {
         let _frame_bg_active_style =
             ui.push_style_color(imgui::StyleColor::FrameBgActive, button_color);
         let _check_mark_style =
-            ui.push_style_color(imgui::StyleColor::CheckMark, [1.0, 1.0, 1.0, 1.0]);
+            ui.push_style_color(imgui::StyleColor::CheckMark, [1.0, 0.0, 0.0, 1.0]);
 
-        // Process keybinds regardless of menu state
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
-            if ui.is_key_pressed(key) {
-                ds1.quitout.write_u32_rel(Some(0x0), 0x2);
+        // Process keybinds unless actively typing in input fields
+        if !ui_wants_input {
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
+                if ui.is_key_pressed(key) {
+                    ds1.quitout.write_u32_rel(Some(0x0), 0x2);
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.moveswap) {
-            if ui.is_key_pressed(key) {
-                player.moveswap(&mut ds1);
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.moveswap) {
+                if ui.is_key_pressed(key) {
+                    player.moveswap(&mut ds1);
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_gravity) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_gravity();
-                self.no_gravity = !self.no_gravity;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_gravity) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_gravity();
+                    self.no_gravity = !self.no_gravity;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_collision) {
-            if ui.is_key_pressed(key) {
-                ds1.set_disable_collision();
-                self.disable_collision = !self.disable_collision;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_collision) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_disable_collision();
+                    self.disable_collision = !self.disable_collision;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.load_position_1) {
-            if ui.is_key_pressed(key) {
-                ds1.teleport_player(
-                    self.stored_positions[0].0,
-                    self.stored_positions[0].1,
-                    self.stored_positions[0].2,
-                );
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.load_position_1) {
+                if ui.is_key_pressed(key) {
+                    ds1.teleport_player(
+                        self.stored_positions[0].0,
+                        self.stored_positions[0].1,
+                        self.stored_positions[0].2,
+                        self.stored_positions[0].3,
+                    );
+                    // Restore HP using chr_data_1 offset (current HP)
+                    ds1.chr_data_1
+                        .write_i32_rel(Some(0x2D4), self.stored_positions[0].4);
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_update_ai) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_update_ai();
-                self.no_update_ai = !self.no_update_ai;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_update_ai) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_update_ai();
+                    self.no_update_ai = !self.no_update_ai;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_down) {
-            if ui.is_key_pressed(key) {
-                ds1.teleport_player(player.x_pos, player.y_pos - 5.0, player.z_pos);
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_down) {
+                if ui.is_key_pressed(key) {
+                    ds1.teleport_player(
+                        player.x_pos,
+                        player.y_pos - 5.0,
+                        player.z_pos,
+                        player.angle,
+                    );
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_up) {
-            if ui.is_key_pressed(key) {
-                ds1.teleport_player(player.x_pos, player.y_pos + 5.0, player.z_pos);
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_up) {
+                if ui.is_key_pressed(key) {
+                    ds1.teleport_player(
+                        player.x_pos,
+                        player.y_pos + 5.0,
+                        player.z_pos,
+                        player.angle,
+                    );
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.store_position_1) {
-            if ui.is_key_pressed(key) {
-                self.stored_positions[0] = (player.x_pos, player.y_pos, player.z_pos);
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.store_position_1) {
+                if ui.is_key_pressed(key) {
+                    self.stored_positions[0] = (
+                        player.x_pos,
+                        player.y_pos,
+                        player.z_pos,
+                        player.angle,
+                        player.hp,
+                    );
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_stamina) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_stam_consume();
-                self.no_stamina_consume = !self.no_stamina_consume;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_stamina) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_stam_consume();
+                    self.no_stamina_consume = !self.no_stamina_consume;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_magic) {
-            if ui.is_key_pressed(key) {
-                ds1.set_all_no_magic_quantity_consume();
-                self.infinite_magic = !self.infinite_magic;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_magic) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_all_no_magic_quantity_consume();
+                    self.infinite_magic = !self.infinite_magic;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_goods) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_goods_consume();
-                self.infinite_goods = !self.infinite_goods;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_goods) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_goods_consume();
+                    self.infinite_goods = !self.infinite_goods;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_hide) {
-            if ui.is_key_pressed(key) {
-                ds1.set_player_hide();
-                self.player_hide = !self.player_hide;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_hide) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_player_hide();
+                    self.player_hide = !self.player_hide;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_silence) {
-            if ui.is_key_pressed(key) {
-                ds1.set_player_silence();
-                self.player_silence = !self.player_silence;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_silence) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_player_silence();
+                    self.player_silence = !self.player_silence;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_death) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_death();
-                self.no_death = !self.no_death;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_death) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_death();
+                    self.no_death = !self.no_death;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_damage) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_damage();
-                self.no_damage = !self.no_damage;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_damage) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_damage();
+                    self.no_damage = !self.no_damage;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_hit) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_hit();
-                self.no_hit = !self.no_hit;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_hit) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_hit();
+                    self.no_hit = !self.no_hit;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_attack) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_attack();
-                self.no_attack = !self.no_attack;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_attack) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_attack();
+                    self.no_attack = !self.no_attack;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_move) {
-            if ui.is_key_pressed(key) {
-                ds1.set_no_move();
-                self.no_move = !self.no_move;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_move) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_no_move();
+                    self.no_move = !self.no_move;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_direction) {
-            if ui.is_key_pressed(key) {
-                ds1.set_draw_direction();
-                self.draw_direction = !self.draw_direction;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_direction) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_draw_direction();
+                    self.draw_direction = !self.draw_direction;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_counter) {
-            if ui.is_key_pressed(key) {
-                ds1.set_draw_counter();
-                self.draw_counter = !self.draw_counter;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_counter) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_draw_counter();
+                    self.draw_counter = !self.draw_counter;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_stable_pos) {
-            if ui.is_key_pressed(key) {
-                ds1.set_draw_stable_pos();
-                self.draw_stable_pos = !self.draw_stable_pos;
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_stable_pos) {
+                if ui.is_key_pressed(key) {
+                    ds1.set_draw_stable_pos();
+                    self.draw_stable_pos = !self.draw_stable_pos;
+                }
             }
-        }
 
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_debug_info) {
-            if ui.is_key_pressed(key) {
-                self.debug_info.toggle();
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_debug_info) {
+                if ui.is_key_pressed(key) {
+                    self.debug_info.toggle();
+                }
             }
-        }
+        } // End of keybind processing when not typing
 
         // Debug Info Window - Toggle with Keypad1
         self.debug_info.render_window(ui, &mut ds1);
+
+        // Toggle animation speed with Keypad2
+        if ui.is_key_pressed(imgui::Key::Keypad2) {
+            if self.anim_speed_toggled {
+                // Return to saved speed
+                self.anim_speed = self.saved_anim_speed;
+                self.anim_speed_toggled = false;
+            } else {
+                // Save current speed and set to 1.0
+                self.saved_anim_speed = self.anim_speed;
+                self.anim_speed = 1.0;
+                self.anim_speed_toggled = true;
+            }
+            ds1.anim_data.write_f32_rel(
+                Some(crate::memory::constants::AnimData::PLAY_SPEED),
+                self.anim_speed,
+            );
+        }
 
         if !self.menu_open {
             return;
         }
 
         ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
-            .size([368.0, 568.0], Condition::FirstUseEver)
+            .size([450.0, 650.0], Condition::FirstUseEver)
             .position([16.0, 16.0], Condition::FirstUseEver)
             .draw_background(false)
             .build(|| {
                 if ui.button("Eject") {
-                    print!("test");
+                    println!("Eject button pressed!");
                     hudhook::eject();
                 }
 
+                if ui.button("Recompile & Reinject") {
+                    // Spawn recompile and reinject process in background
+                    std::thread::spawn(|| {
+                        use std::process::Command;
+                        use std::thread;
+                        use std::time::Duration;
+                        
+                        println!("Starting recompilation...");
+                        let output = Command::new("bash")
+                            .arg("-c")
+                            .arg("cd /home/eloise/Documents/ptde_practice_tool && XWIN_ARCH=\"x86_64,x86\" cargo xwin build --release --target i686-pc-windows-msvc")
+                            .output();
+                        
+                        match output {
+                            Ok(result) => {
+                                println!("Compilation completed with status: {}", result.status);
+                                if !result.stdout.is_empty() {
+                                    println!("stdout: {}", String::from_utf8_lossy(&result.stdout));
+                                }
+                                if !result.stderr.is_empty() {
+                                    println!("stderr: {}", String::from_utf8_lossy(&result.stderr));
+                                }
+                                
+                                // If compilation succeeded, launch injection script
+                                if result.status.success() {
+                                    println!("Compilation successful! Launching practice tool script...");
+                                    
+                                    let launch_result = Command::new("sh")
+                                        .arg("/home/eloise/.local/share/Steam/steamapps/common/Dark Souls Prepare to Die Edition nm/DATA/elopracticetool.sh")
+                                        .current_dir("/home/eloise/.local/share/Steam/steamapps/common/Dark Souls Prepare to Die Edition nm/DATA")
+                                        .spawn();
+                                    
+                                    match launch_result {
+                                        Ok(_) => println!("Practice tool script launched successfully"),
+                                        Err(e) => println!("Failed to launch script: {}", e),
+                                    }
+                                } else {
+                                    println!("Compilation failed, skipping reinjection");
+                                }
+                            }
+                            Err(e) => println!("Failed to run compilation: {}", e),
+                        }
+                    });
+                }
+
                 ui.text("Animation Speed:");
-                ui.set_next_item_width(200.0);
+                ui.same_line();
+                if ui.button("-##speed_dec") {
+                    self.anim_speed -= 0.1;
+                    ds1.anim_data.write_f32_rel(
+                        Some(crate::memory::constants::AnimData::PLAY_SPEED),
+                        self.anim_speed,
+                    );
+                }
+                ui.same_line();
+                ui.set_next_item_width(100.0);
                 if ui.input_float("##anim_speed", &mut self.anim_speed).build() {
-                    ds1.anim_data.write_f32_rel(Some(crate::memory::constants::AnimData::PLAY_SPEED), self.anim_speed);
+                    ds1.anim_data.write_f32_rel(
+                        Some(crate::memory::constants::AnimData::PLAY_SPEED),
+                        self.anim_speed,
+                    );
+                }
+                ui.same_line();
+                if ui.button("+##speed_inc") {
+                    self.anim_speed += 0.1;
+                    ds1.anim_data.write_f32_rel(
+                        Some(crate::memory::constants::AnimData::PLAY_SPEED),
+                        self.anim_speed,
+                    );
                 }
                 ui.separator();
 
                 if ui.collapsing_header("Positions", imgui::TreeNodeFlags::empty()) {
                     for i in 0..3 {
                         ui.text(format!(
-                            "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}",
+                            "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}, Angle: {:.2}, HP: {}",
                             i + 1,
                             self.stored_positions[i].0,
                             self.stored_positions[i].1,
-                            self.stored_positions[i].2
+                            self.stored_positions[i].2,
+                            self.stored_positions[i].3,
+                            self.stored_positions[i].4
                         ));
 
                         ui.same_line();
                         if ui.button(format!("Store##{}", i)) {
-                            self.stored_positions[i] = (player.x_pos, player.y_pos, player.z_pos);
+                            self.stored_positions[i] =
+                                (player.x_pos, player.y_pos, player.z_pos, player.angle, player.hp);
                         }
 
                         ui.same_line();
@@ -437,14 +555,17 @@ impl ImguiRenderLoop for RenderLoop {
                                 self.stored_positions[i].0,
                                 self.stored_positions[i].1,
                                 self.stored_positions[i].2,
+                                self.stored_positions[i].3,
                             );
+                            // Restore HP using chr_data_1 offset (current HP)
+                            ds1.chr_data_1.write_i32_rel(Some(0x2D4), self.stored_positions[i].4);
                         }
 
                         ui.separator();
                     }
                 }
 
-                if ui.collapsing_header("Debug Flags", imgui::TreeNodeFlags::empty()) {
+                if ui.collapsing_header("Debug Flags", imgui::TreeNodeFlags::DEFAULT_OPEN) {
                     if ui.checkbox("inf stam", &mut self.no_stamina_consume) {
                         ds1.set_no_stam_consume();
                     }
@@ -511,66 +632,38 @@ impl ImguiRenderLoop for RenderLoop {
                 }
 
                 if ui.collapsing_header("Stats", imgui::TreeNodeFlags::empty()) {
-                    if (ui.input_int(
-                        format!("Vitality {:?}", player.vitality),
-                        &mut player.vitality,
-                    ))
-                    .build()
-                    {
+                    if (ui.input_int("Vitality", &mut player.vitality)).build() {
                         player.set_player_stat(&mut ds1, CharData2::VITALITY, player.vitality);
                     }
-                    if (ui.input_int(
-                        format!("Attunement {:?}", player.attunement),
-                        &mut player.attunement,
-                    ))
-                    .build()
-                    {
+                    if (ui.input_int("Attunement", &mut player.attunement)).build() {
                         player.set_player_stat(&mut ds1, CharData2::ATTUNEMENT, player.attunement);
                     }
-                    if (ui.input_int(
-                        format!("Endurance {:?}", player.endurance),
-                        &mut player.endurance,
-                    ))
-                    .build()
-                    {
+                    if (ui.input_int("Endurance", &mut player.endurance)).build() {
                         player.set_player_stat(&mut ds1, CharData2::ENDURANCE, player.endurance);
                     }
-                    if (ui.input_int(
-                        format!("Strength {:?}", player.strength),
-                        &mut player.strength,
-                    ))
-                    .build()
-                    {
+                    if (ui.input_int("Strength", &mut player.strength)).build() {
                         player.set_player_stat(&mut ds1, CharData2::STRENGTH, player.strength);
                     }
-                    if (ui.input_int(
-                        format!("Dexterity {:?}", player.dexterity),
-                        &mut player.dexterity,
-                    ))
-                    .build()
-                    {
+                    if (ui.input_int("Dexterity", &mut player.dexterity)).build() {
                         player.set_player_stat(&mut ds1, CharData2::DEXTERITY, player.dexterity);
                     }
-                    if (ui.input_int(
-                        format!("Intelligence {:?}", player.intelligence),
-                        &mut player.intelligence,
-                    ))
-                    .build()
-                    {
+                    if (ui.input_int("Intelligence", &mut player.intelligence)).build() {
                         player.set_player_stat(
                             &mut ds1,
                             CharData2::INTELLIGENCE,
                             player.intelligence,
                         );
                     }
-                    if (ui.input_int(format!("Faith {:?}", player.faith), &mut player.faith))
-                        .build()
-                    {
+                    if (ui.input_int("Faith", &mut player.faith)).build() {
                         player.set_player_stat(&mut ds1, CharData2::FAITH, player.faith);
+                    }
+                    if (ui.input_int("Souls", &mut player.souls)).build() {
+                        ds1.chr_data_2
+                            .write_i32_rel(Some(CharData2::SOULS), player.souls);
                     }
                 }
 
-                if (ui.button("Moveswap")) {
+                if ui.button("Moveswap") {
                     player.moveswap(&mut ds1);
                 }
 

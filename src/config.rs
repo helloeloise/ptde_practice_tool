@@ -41,6 +41,7 @@ pub struct ColorScheme {
     pub button: ColorRGB,
     pub button_hovered: ColorRGB,
     pub button_active: ColorRGB,
+    pub text: ColorRGB,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -123,19 +124,24 @@ impl Default for Config {
             },
             colors: ColorScheme {
                 button: ColorRGB {
-                    r: 206,
-                    g: 128,
-                    b: 156,
+                    r: 91,
+                    g: 206,
+                    b: 250,
                 },
                 button_hovered: ColorRGB {
-                    r: 216,
-                    g: 148,
-                    b: 176,
+                    r: 245,
+                    g: 169,
+                    b: 184,
                 },
                 button_active: ColorRGB {
-                    r: 186,
-                    g: 108,
-                    b: 136,
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                },
+                text: ColorRGB {
+                    r: 255,
+                    g: 50,
+                    b: 100,
                 },
             },
         }

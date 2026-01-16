@@ -1,5 +1,5 @@
 use crate::memory::constants::CharData2;
-use crate::memory::constants::{self, LevelUp};
+use crate::memory::constants::{self, CharData1, LevelUp};
 use crate::memory::offsets;
 use crate::memory::{Ds1, ds1};
 use mem_rs::prelude::*;
@@ -13,6 +13,7 @@ pub struct Player {
     pub x_pos: f32,
     pub y_pos: f32,
     pub z_pos: f32,
+    pub angle: f32,
 
     pub hp: i32,
     pub stamina: i32,
@@ -24,6 +25,10 @@ pub struct Player {
     pub dexterity: i32,
     pub intelligence: i32,
     pub faith: i32,
+    pub souls: i32,
+
+    pub current_poise: f32,
+    pub poise_recovery_rate: f32,
 }
 
 impl Player {
@@ -36,6 +41,7 @@ impl Player {
             x_pos: 0.,
             y_pos: 0.,
             z_pos: 0.,
+            angle: 0.,
 
             hp: 0,
             stamina: 0,
@@ -47,6 +53,10 @@ impl Player {
             dexterity: 0,
             intelligence: 0,
             faith: 0,
+            souls: 0,
+
+            current_poise: 0.0,
+            poise_recovery_rate: 0.0,
         }
     }
 
@@ -55,6 +65,7 @@ impl Player {
         self.x_pos = ds1.get_x_pos();
         self.y_pos = ds1.get_y_pos();
         self.z_pos = ds1.get_z_pos();
+        self.angle = ds1.get_angle();
 
         self.vitality = ds1.chr_data_2.read_i32_rel(Some(CharData2::VITALITY));
         self.attunement = ds1.chr_data_2.read_i32_rel(Some(CharData2::ATTUNEMENT));
@@ -65,6 +76,12 @@ impl Player {
         self.faith = ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH));
         self.hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::HP));
         self.stamina = ds1.chr_data_2.read_i32_rel(Some(CharData2::STAMINA));
+        self.souls = ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS));
+
+        self.current_poise = ds1.chr_data_1.read_f32_rel(Some(CharData1::CURRENT_POISE));
+        self.poise_recovery_rate = ds1
+            .chr_data_1
+            .read_f32_rel(Some(CharData1::POISE_RECOVERY_RATE));
     }
 
     pub fn moveswap(&mut self, ds1: &mut Ds1) {
@@ -85,14 +102,26 @@ impl Player {
         let intelligence = ds1.chr_data_2.read_i32_rel(Some(CharData2::INTELLIGENCE));
         let faith = ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH));
         let resistance = ds1.chr_data_2.read_i32_rel(Some(CharData2::RESISTANCE));
-        
-        let total_stats = vitality + attunement + endurance + strength + dexterity + intelligence + faith + resistance;
+
+        let total_stats = vitality
+            + attunement
+            + endurance
+            + strength
+            + dexterity
+            + intelligence
+            + faith
+            + resistance;
         let soul_level = total_stats - 81;
-        
-        println!("Stats - VIT: {}, ATT: {}, END: {}, STR: {}, DEX: {}, INT: {}, FTH: {}, RES: {}", 
-                 vitality, attunement, endurance, strength, dexterity, intelligence, faith, resistance);
-        println!("Total stats: {}, Calculated soul level: {}", total_stats, soul_level);
-        
+
+        println!(
+            "Stats - VIT: {}, ATT: {}, END: {}, STR: {}, DEX: {}, INT: {}, FTH: {}, RES: {}",
+            vitality, attunement, endurance, strength, dexterity, intelligence, faith, resistance
+        );
+        println!(
+            "Total stats: {}, Calculated soul level: {}",
+            total_stats, soul_level
+        );
+
         soul_level
     }
 
@@ -105,7 +134,7 @@ impl Player {
         let level_up_codecave: i32 = code_cave as *const () as i32;
         println!("Ptr address: {:X}", level_up_codecave);
         println!("Level up codecave address: {:X}", level_up_codecave);
-        
+
         // Write stats at compact offsets for the codecave
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x0).try_into().unwrap(),
@@ -139,14 +168,14 @@ impl Player {
             (level_up_codecave + 0x1C).try_into().unwrap(),
             ds1.chr_data_2.read_i32_rel(Some(CharData2::FAITH)),
         );
-        
+
         let calculated_level = self.calculate_soul_level(ds1);
         println!("Writing calculated soul level: {}", calculated_level);
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x20).try_into().unwrap(),
             calculated_level,
         );
-        
+
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x2C).try_into().unwrap(),
             ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS)),
