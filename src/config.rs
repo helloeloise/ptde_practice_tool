@@ -41,7 +41,16 @@ pub struct ColorScheme {
     pub button: ColorRGB,
     pub button_hovered: ColorRGB,
     pub button_active: ColorRGB,
+    #[serde(default = "default_text_color")]
     pub text: ColorRGB,
+}
+
+fn default_text_color() -> ColorRGB {
+    ColorRGB {
+        r: 255,
+        g: 255,
+        b: 255,
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

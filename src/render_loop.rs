@@ -72,6 +72,7 @@ pub struct RenderLoop {
     anim_speed: f32,
     saved_anim_speed: f32,
     anim_speed_toggled: bool,
+    last_flag_sync_time: std::time::Instant,
 }
 impl RenderLoop {
     pub fn new() -> Self {
@@ -117,6 +118,7 @@ impl RenderLoop {
             anim_speed: 1.0,
             saved_anim_speed: 1.0,
             anim_speed_toggled: false,
+            last_flag_sync_time: std::time::Instant::now(),
         }
     }
 }
@@ -125,63 +127,58 @@ impl ImguiRenderLoop for RenderLoop {
     fn render(&mut self, ui: &mut imgui::Ui) {
         let instance = get_ds1_instance();
         let mut ds1 = instance.lock().unwrap();
-        let mut player = Player::new();
-        player.instantiate(&mut ds1);
-        self.debug_info.update(&ds1);
-        let mut bonfire = Bonfire::new();
-        self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
 
-        let mut items_handler = Items::new();
-
-        // Enforce checkbox states on game memory (checkboxes are source of truth)
-        // This ensures flags stay active even if the game resets them (e.g., when going to main menu)
-        if self.no_stamina_consume {
-            ds1.set_no_stam_consume_to(true);
-        }
-        if self.infinite_magic {
-            ds1.set_all_no_magic_quantity_consume_to(true);
-        }
-        if self.infinite_goods {
-            ds1.set_no_goods_consume_to(true);
-        }
-        if self.player_hide {
-            ds1.set_player_hide_to(true);
-        }
-        if self.player_silence {
-            ds1.set_player_silence_to(true);
-        }
-        if self.no_death {
-            ds1.set_no_death_to(true);
-        }
-        if self.no_damage {
-            ds1.set_no_damage_to(true);
-        }
-        if self.no_hit {
-            ds1.set_no_hit_to(true);
-        }
-        if self.no_attack {
-            ds1.set_no_attack_to(true);
-        }
-        if self.no_move {
-            ds1.set_no_move_to(true);
-        }
-        if self.no_update_ai {
-            ds1.set_no_update_ai_to(true);
-        }
-        if self.disable_collision {
-            ds1.set_disable_collision_to(true);
-        }
-        if self.no_gravity {
-            ds1.set_no_gravity_to(true);
-        }
-        if self.draw_direction {
-            ds1.set_draw_direction_to(true);
-        }
-        if self.draw_counter {
-            ds1.set_draw_counter_to(true);
-        }
-        if self.draw_stable_pos {
-            ds1.set_draw_stable_pos_to(true);
+        // Enforce checkbox states to game memory every second
+        if self.last_flag_sync_time.elapsed().as_secs() >= 1 {
+            if self.no_stamina_consume {
+                ds1.set_no_stam_consume_to(true);
+            }
+            if self.infinite_magic {
+                ds1.set_all_no_magic_quantity_consume_to(true);
+            }
+            if self.infinite_goods {
+                ds1.set_no_goods_consume_to(true);
+            }
+            if self.player_hide {
+                ds1.set_player_hide_to(true);
+            }
+            if self.player_silence {
+                ds1.set_player_silence_to(true);
+            }
+            if self.no_death {
+                ds1.set_no_death_to(true);
+            }
+            if self.no_damage {
+                ds1.set_no_damage_to(true);
+            }
+            if self.no_hit {
+                ds1.set_no_hit_to(true);
+            }
+            if self.no_attack {
+                ds1.set_no_attack_to(true);
+            }
+            if self.no_move {
+                ds1.set_no_move_to(true);
+            }
+            if self.no_update_ai {
+                ds1.set_no_update_ai_to(true);
+            }
+            if self.disable_collision {
+                ds1.set_disable_collision_to(true);
+            }
+            if self.no_gravity {
+                ds1.set_no_gravity_to(true);
+            }
+            if self.draw_direction {
+                ds1.set_draw_direction_to(true);
+            }
+            if self.draw_counter {
+                ds1.set_draw_counter_to(true);
+            }
+            if self.draw_stable_pos {
+                ds1.set_draw_stable_pos_to(true);
+            }
+            self.last_flag_sync_time = std::time::Instant::now();
         }
 
         // Check if toggle_menu key is pressed
@@ -207,6 +204,9 @@ impl ImguiRenderLoop for RenderLoop {
                 self.input_was_disabled = false;
             }
         }
+
+        // Only instantiate player when needed (for keybinds or menu)
+        let mut player_opt: Option<Player> = None;
 
         // Set custom button colors from config
         let button_color = self.config.colors.button.to_float4();
@@ -235,13 +235,14 @@ impl ImguiRenderLoop for RenderLoop {
             ui.push_style_color(imgui::StyleColor::TitleBgActive, button_color);
         let _title_collapsed_style =
             ui.push_style_color(imgui::StyleColor::TitleBgCollapsed, button_active);
-        let _frame_bg_style = ui.push_style_color(imgui::StyleColor::FrameBg, button_active);
+        let _frame_bg_style = ui.push_style_color(imgui::StyleColor::FrameBg, button_hovered);
         let _frame_bg_hovered_style =
             ui.push_style_color(imgui::StyleColor::FrameBgHovered, button_hovered);
         let _frame_bg_active_style =
-            ui.push_style_color(imgui::StyleColor::FrameBgActive, button_color);
+            ui.push_style_color(imgui::StyleColor::FrameBgActive, button_hovered);
         let _check_mark_style =
             ui.push_style_color(imgui::StyleColor::CheckMark, [1.0, 0.0, 0.0, 1.0]);
+        let _text_input_style = ui.push_style_color(imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]);
 
         // Process keybinds unless actively typing in input fields
         if !ui_wants_input {
@@ -253,7 +254,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.moveswap) {
                 if ui.is_key_pressed(key) {
-                    player.moveswap(&mut ds1);
+                    if player_opt.is_none() {
+                        let mut p = Player::new();
+                        p.instantiate(&mut ds1);
+                        player_opt = Some(p);
+                    }
+                    player_opt.as_mut().unwrap().moveswap(&mut ds1);
                 }
             }
 
@@ -294,6 +300,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_down) {
                 if ui.is_key_pressed(key) {
+                    if player_opt.is_none() {
+                        let mut p = Player::new();
+                        p.instantiate(&mut ds1);
+                        player_opt = Some(p);
+                    }
+                    let player = player_opt.as_ref().unwrap();
                     ds1.teleport_player(
                         player.x_pos,
                         player.y_pos - 5.0,
@@ -305,6 +317,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_up) {
                 if ui.is_key_pressed(key) {
+                    if player_opt.is_none() {
+                        let mut p = Player::new();
+                        p.instantiate(&mut ds1);
+                        player_opt = Some(p);
+                    }
+                    let player = player_opt.as_ref().unwrap();
                     ds1.teleport_player(
                         player.x_pos,
                         player.y_pos + 5.0,
@@ -316,6 +334,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.store_position_1) {
                 if ui.is_key_pressed(key) {
+                    if player_opt.is_none() {
+                        let mut p = Player::new();
+                        p.instantiate(&mut ds1);
+                        player_opt = Some(p);
+                    }
+                    let player = player_opt.as_ref().unwrap();
                     self.stored_positions[0] = (
                         player.x_pos,
                         player.y_pos,
@@ -424,7 +448,10 @@ impl ImguiRenderLoop for RenderLoop {
             }
         } // End of keybind processing when not typing
 
-        // Debug Info Window - Toggle with Keypad1
+        // Debug Info Window - Only update when visible
+        if self.debug_info.is_open() {
+            self.debug_info.update(&ds1);
+        }
         self.debug_info.render_window(ui, &mut ds1);
 
         // Toggle animation speed with Keypad2
@@ -449,6 +476,13 @@ impl ImguiRenderLoop for RenderLoop {
             return;
         }
 
+        // Only initialize player, bonfire, and items when menu is open
+        let mut player = Player::new();
+        player.instantiate(&mut ds1);
+        let mut bonfire = Bonfire::new();
+        self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
+        let mut items_handler = Items::new();
+
         ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
             .size([450.0, 650.0], Condition::FirstUseEver)
             .position([16.0, 16.0], Condition::FirstUseEver)
@@ -465,13 +499,11 @@ impl ImguiRenderLoop for RenderLoop {
                         use std::process::Command;
                         use std::thread;
                         use std::time::Duration;
-                        
                         println!("Starting recompilation...");
                         let output = Command::new("bash")
                             .arg("-c")
                             .arg("cd /home/eloise/Documents/ptde_practice_tool && XWIN_ARCH=\"x86_64,x86\" cargo xwin build --release --target i686-pc-windows-msvc")
                             .output();
-                        
                         match output {
                             Ok(result) => {
                                 println!("Compilation completed with status: {}", result.status);
@@ -481,16 +513,13 @@ impl ImguiRenderLoop for RenderLoop {
                                 if !result.stderr.is_empty() {
                                     println!("stderr: {}", String::from_utf8_lossy(&result.stderr));
                                 }
-                                
                                 // If compilation succeeded, launch injection script
                                 if result.status.success() {
                                     println!("Compilation successful! Launching practice tool script...");
-                                    
                                     let launch_result = Command::new("sh")
                                         .arg("/home/eloise/.local/share/Steam/steamapps/common/Dark Souls Prepare to Die Edition nm/DATA/elopracticetool.sh")
                                         .current_dir("/home/eloise/.local/share/Steam/steamapps/common/Dark Souls Prepare to Die Edition nm/DATA")
                                         .spawn();
-                                    
                                     match launch_result {
                                         Ok(_) => println!("Practice tool script launched successfully"),
                                         Err(e) => println!("Failed to launch script: {}", e),
