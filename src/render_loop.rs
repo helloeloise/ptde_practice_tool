@@ -128,8 +128,8 @@ impl ImguiRenderLoop for RenderLoop {
         let instance = get_ds1_instance();
         let mut ds1 = instance.lock().unwrap();
 
-        // Enforce checkbox states to game memory every second
-        if self.last_flag_sync_time.elapsed().as_secs() >= 1 {
+        // Enforce checkbox states to game memory every 2 seconds (reduced frequency to minimize lag)
+        if self.last_flag_sync_time.elapsed().as_secs() >= 2 {
             if self.no_stamina_consume {
                 ds1.set_no_stam_consume_to(true);
             }
@@ -205,9 +205,6 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
-        // Only instantiate player when needed (for keybinds or menu)
-        let mut player_opt: Option<Player> = None;
-
         // Set custom button colors from config
         let button_color = self.config.colors.button.to_float4();
         let button_hovered = self.config.colors.button_hovered.to_float4();
@@ -246,6 +243,10 @@ impl ImguiRenderLoop for RenderLoop {
 
         // Process keybinds unless actively typing in input fields
         if !ui_wants_input {
+            // Instantiate player once for all keybinds that need position data
+            // This is lazy - only created if a position-related keybind is pressed
+            let mut player_for_keybinds: Option<Player> = None;
+            
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
                 if ui.is_key_pressed(key) {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
@@ -254,12 +255,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.moveswap) {
                 if ui.is_key_pressed(key) {
-                    if player_opt.is_none() {
+                    if player_for_keybinds.is_none() {
                         let mut p = Player::new();
-                        p.instantiate(&mut ds1);
-                        player_opt = Some(p);
+                        p.instantiate_position_only(&mut ds1);
+                        player_for_keybinds = Some(p);
                     }
-                    player_opt.as_mut().unwrap().moveswap(&mut ds1);
+                    player_for_keybinds.as_mut().unwrap().moveswap(&mut ds1);
                 }
             }
 
@@ -300,12 +301,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_down) {
                 if ui.is_key_pressed(key) {
-                    if player_opt.is_none() {
+                    if player_for_keybinds.is_none() {
                         let mut p = Player::new();
-                        p.instantiate(&mut ds1);
-                        player_opt = Some(p);
+                        p.instantiate_position_only(&mut ds1);
+                        player_for_keybinds = Some(p);
                     }
-                    let player = player_opt.as_ref().unwrap();
+                    let player = player_for_keybinds.as_ref().unwrap();
                     ds1.teleport_player(
                         player.x_pos,
                         player.y_pos - 5.0,
@@ -317,12 +318,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_up) {
                 if ui.is_key_pressed(key) {
-                    if player_opt.is_none() {
+                    if player_for_keybinds.is_none() {
                         let mut p = Player::new();
-                        p.instantiate(&mut ds1);
-                        player_opt = Some(p);
+                        p.instantiate_position_only(&mut ds1);
+                        player_for_keybinds = Some(p);
                     }
-                    let player = player_opt.as_ref().unwrap();
+                    let player = player_for_keybinds.as_ref().unwrap();
                     ds1.teleport_player(
                         player.x_pos,
                         player.y_pos + 5.0,
@@ -334,12 +335,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.store_position_1) {
                 if ui.is_key_pressed(key) {
-                    if player_opt.is_none() {
+                    if player_for_keybinds.is_none() {
                         let mut p = Player::new();
-                        p.instantiate(&mut ds1);
-                        player_opt = Some(p);
+                        p.instantiate_position_only(&mut ds1);
+                        player_for_keybinds = Some(p);
                     }
-                    let player = player_opt.as_ref().unwrap();
+                    let player = player_for_keybinds.as_ref().unwrap();
                     self.stored_positions[0] = (
                         player.x_pos,
                         player.y_pos,
@@ -481,56 +482,16 @@ impl ImguiRenderLoop for RenderLoop {
         player.instantiate(&mut ds1);
         let mut bonfire = Bonfire::new();
         self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
-        let mut items_handler = Items::new();
 
         ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
             .size([450.0, 650.0], Condition::FirstUseEver)
             .position([16.0, 16.0], Condition::FirstUseEver)
             .draw_background(false)
             .build(|| {
+                let mut items_handler = Items::new();
                 if ui.button("Eject") {
                     println!("Eject button pressed!");
                     hudhook::eject();
-                }
-
-                if ui.button("Recompile & Reinject") {
-                    // Spawn recompile and reinject process in background
-                    std::thread::spawn(|| {
-                        use std::process::Command;
-                        use std::thread;
-                        use std::time::Duration;
-                        println!("Starting recompilation...");
-                        let output = Command::new("bash")
-                            .arg("-c")
-                            .arg("cd /home/eloise/Documents/ptde_practice_tool && XWIN_ARCH=\"x86_64,x86\" cargo xwin build --release --target i686-pc-windows-msvc")
-                            .output();
-                        match output {
-                            Ok(result) => {
-                                println!("Compilation completed with status: {}", result.status);
-                                if !result.stdout.is_empty() {
-                                    println!("stdout: {}", String::from_utf8_lossy(&result.stdout));
-                                }
-                                if !result.stderr.is_empty() {
-                                    println!("stderr: {}", String::from_utf8_lossy(&result.stderr));
-                                }
-                                // If compilation succeeded, launch injection script
-                                if result.status.success() {
-                                    println!("Compilation successful! Launching practice tool script...");
-                                    let launch_result = Command::new("sh")
-                                        .arg("/home/eloise/.local/share/Steam/steamapps/common/Dark Souls Prepare to Die Edition nm/DATA/elopracticetool.sh")
-                                        .current_dir("/home/eloise/.local/share/Steam/steamapps/common/Dark Souls Prepare to Die Edition nm/DATA")
-                                        .spawn();
-                                    match launch_result {
-                                        Ok(_) => println!("Practice tool script launched successfully"),
-                                        Err(e) => println!("Failed to launch script: {}", e),
-                                    }
-                                } else {
-                                    println!("Compilation failed, skipping reinjection");
-                                }
-                            }
-                            Err(e) => println!("Failed to run compilation: {}", e),
-                        }
-                    });
                 }
 
                 ui.text("Animation Speed:");

@@ -60,6 +60,16 @@ impl Player {
         }
     }
 
+    // Lightweight instantiation for keybinds that only need position data
+    // This reduces memory reads from ~13 to 5, significantly improving responsiveness
+    pub fn instantiate_position_only(&mut self, ds1: &mut Ds1) {
+        self.x_pos = ds1.get_x_pos();
+        self.y_pos = ds1.get_y_pos();
+        self.z_pos = ds1.get_z_pos();
+        self.angle = ds1.get_angle();
+        self.hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::HP));
+    }
+
     //Putting this in a separated function because i am unsure if i can directly get the values from ds1 in the ::new()
     pub fn instantiate(&mut self, ds1: &mut Ds1) {
         self.x_pos = ds1.get_x_pos();

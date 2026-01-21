@@ -582,87 +582,21 @@ impl Items {
             .chr_data_2
             .read_i32_rel(Some(CharData2::INVENTORY_INDEX_START));
         let get_item_base_address = ds1.item_get_pointer.base_address;
+
+        println!("Chardata2 base address: {:#x}", ds1.chr_data_2.base_address);
+        print!("combined offset: {:#x} ", ds1.chr_data_2.base_address + CharData2::INVENTORY_INDEX_START);
         println!("Get item base address: {:#x}", get_item_base_address);
-        println!("Inventory address: {:?}", inventory_address);
+        println!("Inventory address: {:#x}", inventory_address);
         println!(
-            "Giving item ID: {}, Category: {}, Count: {}",
+            "Giving item ID: {}, Category: {:#x}, Count: {}",
             item_id, category, item_count
         );
 
         let item_func: ItemFunc = unsafe { mem::transmute(get_item_base_address) };
         item_func(0x0A2E31A8, category, item_id, item_count, 1, 0);
 
-        /*
-        unsafe {
-            #[unsafe(no_mangle)]
-            asm!(
-                "mov edi, {a}",
-                "mov ecx, {b}",
-                "mov esi, {c}",
-                "mov ebp, {d}",
-                "mov ebx, 0xFFFFFFFF",
-                "push 0",
-                "push 1",
-                "push ebp",
-                "push esi",
-                "push ecx",
-                "push edi",
-                "call {e}",
-
-                a = in(reg) ,
-                b = in(reg) category,
-                c = in(reg) item_id,
-                d = in(reg) item_count,
-                e = in(reg) get_item_base_address as i32,
-
-
-            );
-        }
-        */
+        
     }
 
-    pub fn execute_drop_item(
-        &mut self,
-        ds1: &mut Ds1,
-        mut category: i32,
-        mut item_id: i32,
-        mut item_count: i32,
-    ) {
-        let item_drop_address = ds1.item_drop_pointer.base_address;
-        let item_drop_unknown_1_address = ds1.item_drop_unknown_1_pointer.read_i32_rel(Some(0x0));
-        let item_drop_unknown_2_address = ds1.item_drop_unknown_2_pointer.read_i32_rel(Some(0x0));
-        println!(
-            "Item drop unknown 1 address: {:#x}",
-            item_drop_unknown_1_address
-        );
-        println!(
-            "Item drop unknown 2 address: {:#x}",
-            item_drop_unknown_2_address
-        );
-
-        unsafe {
-            #[unsafe(no_mangle)]
-            asm!(
-                "mov ebp, {a}",
-                "mov ebx, {b}",
-                "mov ecx, 0xFFFFFFFF",
-                "mov edx, {c}",
-                "mov eax, {x}",
-                "mov [eax + 0x828], ebp",
-                "mov [eax + 0x82C], ebx",
-                "mov [eax + 0x830], ecx",
-                "mov [eax + 0x834], edx",
-                "mov eax, {y}",
-                "push eax",
-                "call {z}",
-                a = inout(reg) category,
-                b = inout(reg) item_id,
-                c = inout(reg) item_count,
-                x = in(reg) item_drop_unknown_1_address as i32,
-                y = in(reg) item_drop_unknown_2_address as i32,
-                z = in(reg) item_drop_address as i32,
-
-            );
-        }
-    }
+    
 }
