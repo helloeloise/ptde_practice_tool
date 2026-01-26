@@ -19,6 +19,7 @@ teleport_down = "Alpha7"             # Teleport down
 teleport_up = "Alpha8"               # Teleport up
 store_position_1 = "Keypad8"         # Store current position (slot 1)
 restore_full_hp = "Keypad6"          # Restore player HP to full
+rtsr_range = "Keypad4"               # Set HP to RTSR range (20% of max)
 
 # Debug Flags - Set these to enable hotkeys for debug features
 toggle_no_stamina = ""               # Toggle infinite stamina

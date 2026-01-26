@@ -359,6 +359,15 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.rtsr_range) {
+                if ui.is_key_pressed(key) {
+                    // Set HP to 19% of max HP (under 20% for RTSR activation)
+                    let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
+                    let rtsr_hp = (max_hp as f32 * 0.19) as i32;
+                    ds1.chr_data_1.write_i32_rel(Some(0x2D4), rtsr_hp);
+                }
+            }
+
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_stamina) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_stam_consume();
@@ -670,6 +679,14 @@ impl ImguiRenderLoop for RenderLoop {
                     // Read max HP from CharData2 and write it to current HP in CharData1
                     let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
                     ds1.chr_data_1.write_i32_rel(Some(0x2D4), max_hp);
+                }
+
+                ui.same_line();
+                if ui.button("RTSR RANGE") {
+                    // Set HP to 19% of max HP (under 20% for RTSR activation)
+                    let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
+                    let rtsr_hp = (max_hp as f32 * 0.19) as i32;
+                    ds1.chr_data_1.write_i32_rel(Some(0x2D4), rtsr_hp);
                 }
 
                 if ui.collapsing_header("Select bonfire", imgui::TreeNodeFlags::empty()) {
