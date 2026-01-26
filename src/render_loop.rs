@@ -351,6 +351,14 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
+            if let Some(key) = string_to_imgui_key(&self.config.keybinds.restore_full_hp) {
+                if ui.is_key_pressed(key) {
+                    // Read max HP from CharData2 and write it to current HP in CharData1
+                    let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
+                    ds1.chr_data_1.write_i32_rel(Some(0x2D4), max_hp);
+                }
+            }
+
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_stamina) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_stam_consume();
@@ -655,6 +663,13 @@ impl ImguiRenderLoop for RenderLoop {
 
                 if ui.button("Moveswap") {
                     player.moveswap(&mut ds1);
+                }
+
+                ui.same_line();
+                if ui.button("Restore Full HP") {
+                    // Read max HP from CharData2 and write it to current HP in CharData1
+                    let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
+                    ds1.chr_data_1.write_i32_rel(Some(0x2D4), max_hp);
                 }
 
                 if ui.collapsing_header("Select bonfire", imgui::TreeNodeFlags::empty()) {

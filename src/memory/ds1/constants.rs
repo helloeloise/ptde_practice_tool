@@ -122,6 +122,7 @@ pub struct CharData2;
 #[allow(dead_code)]
 impl CharData2 {
     pub const HP: usize = 0xC;
+    pub const MAX_HP: usize = 0x14;
     pub const STAMINA: usize = 0x28;
     pub const VITALITY: usize = 0x38;
     pub const ATTUNEMENT: usize = 0x40;
