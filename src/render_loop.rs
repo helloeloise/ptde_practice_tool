@@ -675,6 +675,11 @@ impl ImguiRenderLoop for RenderLoop {
                 }
 
                 ui.same_line();
+                if ui.button("Swap Gender") {
+                    player.swap_gender(&mut ds1);
+                }
+
+                ui.same_line();
                 if ui.button("Restore Full HP") {
                     // Read max HP from CharData2 and write it to current HP in CharData1
                     let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));

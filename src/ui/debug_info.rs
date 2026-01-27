@@ -51,6 +51,7 @@ pub struct DebugInfo {
     stance: i32,
     current_poise: f32,
     poise_recovery_rate: f32,
+    ai_timer: f32,
     is_open: bool,
 }
 
@@ -102,6 +103,7 @@ impl DebugInfo {
             stance: 0,
             current_poise: 0.0,
             poise_recovery_rate: 0.0,
+            ai_timer: 0.0,
             is_open: false,
         }
     }
@@ -226,6 +228,7 @@ impl DebugInfo {
         self.poise_recovery_rate = ds1
             .chr_data_1
             .read_f32_rel(Some(CharData1::POISE_RECOVERY_RATE));
+        self.ai_timer = ds1.target_bank.read_f32_rel(Some(0x14));
     }
 
     pub fn get_current_anim_id(&self) -> i32 {
@@ -258,6 +261,7 @@ impl DebugInfo {
                 ));
                 ui.text(format!("Poise: {:.2}", self.current_poise));
                 ui.text(format!("Poise Timer: {:.2}", self.poise_recovery_rate));
+                ui.text(format!("AI Timer: {:.2}", self.ai_timer));
                 ui.separator();
 
                 // Weapons

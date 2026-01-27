@@ -60,8 +60,6 @@ impl Player {
         }
     }
 
-    // Lightweight instantiation for keybinds that only need position data
-    // This reduces memory reads from ~13 to 5, significantly improving responsiveness
     pub fn instantiate_position_only(&mut self, ds1: &mut Ds1) {
         self.x_pos = ds1.get_x_pos();
         self.y_pos = ds1.get_y_pos();
@@ -92,6 +90,20 @@ impl Player {
         self.poise_recovery_rate = ds1
             .chr_data_1
             .read_f32_rel(Some(CharData1::POISE_RECOVERY_RATE));
+    }
+
+    pub fn swap_gender(&mut self, ds1: &mut Ds1) {
+        let current_gender = ds1
+            .chr_data_2
+            .read_i32_rel(Some(CharData2::GENDER));
+        let new_gender: i32 = match current_gender {
+            1 => 0,
+            0 => 1,
+            _ => return,
+        };
+
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::GENDER), new_gender);
     }
 
     pub fn moveswap(&mut self, ds1: &mut Ds1) {

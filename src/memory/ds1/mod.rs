@@ -33,6 +33,7 @@ pub struct Ds1 {
     pub item_drop_pointer: Pointer,
     pub item_drop_unknown_1_pointer: Pointer,
     pub item_drop_unknown_2_pointer: Pointer,
+    pub target_bank: Pointer,
 }
 
 impl Ds1 {
@@ -66,6 +67,7 @@ impl Ds1 {
             item_drop_pointer: Pointer::default(),
             item_drop_unknown_1_pointer: Pointer::default(),
             item_drop_unknown_2_pointer: Pointer::default(),
+            target_bank: Pointer::default(),
         };
         let _ = ds1struct.refresh();
         ds1struct
@@ -91,6 +93,16 @@ impl Ds1 {
                     offsets::CHAR_DATA_1_OFFSET1,
                     offsets::CHAR_DATA_1_OFFSET2,
                     offsets::CHAR_DATA_1_OFFSET3,
+                ],
+            )?;
+
+
+
+            self.target_bank = self.process.scan_abs(
+                "target_bank",
+                &offsets::TARGET_BANK_AOB,
+                offsets::TARGET_BANK_AOB_OFFSET,
+                vec![0x0,0x0
                 ],
             )?;
 
@@ -208,6 +220,9 @@ impl Ds1 {
                 offsets::ALL_NO_MAGIC_QTY_CONSUME_AOB_OFFSET,
                 vec![0x0],
             )?;
+
+
+            
         } else {
             self.process.refresh()?;
         }

@@ -19,11 +19,16 @@ pub const DRAW_MAP_AOB: &str =
     "80 3D ? ? ? ? 00 A1 ? ? ? ? 8B 48 08 8B 11 56 8B 72 28 B8 00 00 00 80";
 pub const DRAW_MAP_AOB_OFFSET: usize = 0x2;
 
-pub const CHAR_DATA_1_AOB: &str = "8B 15 ? ? ? ? F3 0F 10 44 24 30 52";
+pub const CHAR_DATA_1_AOB: &str = "8B 15 ? ? ? ? F3 0F 10 44 24 30 52"; // 0137DC70
 pub const CHAR_DATA_1_AOB_OFFSET: usize = 0x2;
 pub const CHAR_DATA_1_OFFSET1: usize = 0x0;
 pub const CHAR_DATA_1_OFFSET2: usize = 0x4;
 pub const CHAR_DATA_1_OFFSET3: usize = 0x0;
+
+pub const TARGET_BANK_AOB: &str = "8B 15 ? ? ? ? F3 0F 10 44 24 30 52";
+pub const TARGET_BANK_AOB_OFFSET: usize = 0x2;
+pub const TARGET_BANK_OFFSET1: usize = 0x0;
+
 
 pub const CHAR_DATA_2_AOB: &str = "A1 ? ? ? ? 8B 40 34 53 32 DB 85 C0";
 pub const CHAR_DATA_2_AOB_OFFSET: usize = 0x1;
