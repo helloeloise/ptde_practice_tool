@@ -42,6 +42,7 @@ impl CharData1 {
     pub const CURRENT_POISE: usize = 0x1c0;
     pub const MAX_POISE: usize = 0x1c4;
     pub const POISE_RECOVERY_RATE: usize = 0x1cc;
+    pub const AI_ID: usize = 0x41c;
 }
 
 pub struct CharFlags1;

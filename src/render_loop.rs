@@ -50,6 +50,7 @@ pub struct RenderLoop {
     draw_stable_pos: bool,
     stored_positions: [(f32, f32, f32, f32, i32); 3],
     input_was_disabled: bool,
+    show_console: bool,
 
     stored_bonfire: i32,
     selected_bonfire_id: i32,
@@ -97,6 +98,7 @@ impl RenderLoop {
             draw_stable_pos: false,
             stored_positions: [(0.0, 0.0, 0.0, 0.0, 0); 3],
             input_was_disabled: false,
+            show_console: false,
             stored_bonfire: 0,
             selected_bonfire_id: -1,
             bonfire_search: String::new(),
@@ -127,59 +129,6 @@ impl ImguiRenderLoop for RenderLoop {
     fn render(&mut self, ui: &mut imgui::Ui) {
         let instance = get_ds1_instance();
         let mut ds1 = instance.lock().unwrap();
-
-        // Enforce checkbox states to game memory every 2 seconds (reduced frequency to minimize lag)
-        if self.last_flag_sync_time.elapsed().as_secs() >= 2 {
-            if self.no_stamina_consume {
-                ds1.set_no_stam_consume_to(true);
-            }
-            if self.infinite_magic {
-                ds1.set_all_no_magic_quantity_consume_to(true);
-            }
-            if self.infinite_goods {
-                ds1.set_no_goods_consume_to(true);
-            }
-            if self.player_hide {
-                ds1.set_player_hide_to(true);
-            }
-            if self.player_silence {
-                ds1.set_player_silence_to(true);
-            }
-            if self.no_death {
-                ds1.set_no_death_to(true);
-            }
-            if self.no_damage {
-                ds1.set_no_damage_to(true);
-            }
-            if self.no_hit {
-                ds1.set_no_hit_to(true);
-            }
-            if self.no_attack {
-                ds1.set_no_attack_to(true);
-            }
-            if self.no_move {
-                ds1.set_no_move_to(true);
-            }
-            if self.no_update_ai {
-                ds1.set_no_update_ai_to(true);
-            }
-            if self.disable_collision {
-                ds1.set_disable_collision_to(true);
-            }
-            if self.no_gravity {
-                ds1.set_no_gravity_to(true);
-            }
-            if self.draw_direction {
-                ds1.set_draw_direction_to(true);
-            }
-            if self.draw_counter {
-                ds1.set_draw_counter_to(true);
-            }
-            if self.draw_stable_pos {
-                ds1.set_draw_stable_pos_to(true);
-            }
-            self.last_flag_sync_time = std::time::Instant::now();
-        }
 
         // Check if toggle_menu key is pressed
         if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_menu) {
@@ -466,7 +415,7 @@ impl ImguiRenderLoop for RenderLoop {
             }
         } // End of keybind processing when not typing
 
-        // Debug Info Window - Only update when visible
+        // Debug Info Window - Update when visible
         if self.debug_info.is_open() {
             self.debug_info.update(&ds1);
         }
@@ -491,14 +440,14 @@ impl ImguiRenderLoop for RenderLoop {
         }
 
         if !self.menu_open {
+            // Sync flags even when menu is closed, but only if needed
+            self.sync_flags_if_needed(&mut ds1);
             return;
         }
 
-        // Only initialize player, bonfire, and items when menu is open
+        // Only initialize player and bonfire when menu is open
         let mut player = Player::new();
-        player.instantiate(&mut ds1);
         let mut bonfire = Bonfire::new();
-        self.stored_bonfire = bonfire.get_last_bonfire(&mut ds1);
 
         ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
             .size([450.0, 650.0], Condition::FirstUseEver)
@@ -539,6 +488,9 @@ impl ImguiRenderLoop for RenderLoop {
                 ui.separator();
 
                 if ui.collapsing_header("Positions", imgui::TreeNodeFlags::empty()) {
+                    // Update player position data (lightweight operation)
+                    player.instantiate_position_only(&mut ds1);
+                    
                     for i in 0..3 {
                         ui.text(format!(
                             "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}, Angle: {:.2}, HP: {}",
@@ -573,6 +525,14 @@ impl ImguiRenderLoop for RenderLoop {
                 }
 
                 if ui.collapsing_header("Debug Flags", imgui::TreeNodeFlags::DEFAULT_OPEN) {
+                    if ui.checkbox("show console", &mut self.show_console) {
+                        if self.show_console {
+                            hudhook::alloc_console().ok();
+                        } else {
+                            hudhook::free_console().ok();
+                        }
+                    }
+
                     if ui.checkbox("inf stam", &mut self.no_stamina_consume) {
                         ds1.set_no_stam_consume();
                     }
@@ -639,6 +599,9 @@ impl ImguiRenderLoop for RenderLoop {
                 }
 
                 if ui.collapsing_header("Stats", imgui::TreeNodeFlags::empty()) {
+                    // Instantiate player stats when Stats section is visible
+                    player.instantiate(&mut ds1);
+                    
                     if (ui.input_int("Vitality", &mut player.vitality)).build() {
                         player.set_player_stat(&mut ds1, CharData2::VITALITY, player.vitality);
                     }
@@ -943,5 +906,74 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
             });
+
+        // Sync flags at end of render (non-blocking position)
+        self.sync_flags_if_needed(&mut ds1);
+    }
+}
+
+impl RenderLoop {
+    fn sync_flags_if_needed(&mut self, ds1: &mut Ds1) {
+        // Only sync flags every 3 seconds and only if at least one flag is enabled
+        let any_flag_enabled = self.no_stamina_consume || self.infinite_magic || self.infinite_goods
+            || self.player_hide || self.player_silence || self.no_death || self.no_damage
+            || self.no_hit || self.no_attack || self.no_move || self.no_update_ai
+            || self.disable_collision || self.no_gravity || self.draw_direction
+            || self.draw_counter || self.draw_stable_pos;
+
+        if !any_flag_enabled || self.last_flag_sync_time.elapsed().as_secs() < 3 {
+            return;
+        }
+
+        // Batch all flag writes together
+        if self.no_stamina_consume {
+            ds1.set_no_stam_consume_to(true);
+        }
+        if self.infinite_magic {
+            ds1.set_all_no_magic_quantity_consume_to(true);
+        }
+        if self.infinite_goods {
+            ds1.set_no_goods_consume_to(true);
+        }
+        if self.player_hide {
+            ds1.set_player_hide_to(true);
+        }
+        if self.player_silence {
+            ds1.set_player_silence_to(true);
+        }
+        if self.no_death {
+            ds1.set_no_death_to(true);
+        }
+        if self.no_damage {
+            ds1.set_no_damage_to(true);
+        }
+        if self.no_hit {
+            ds1.set_no_hit_to(true);
+        }
+        if self.no_attack {
+            ds1.set_no_attack_to(true);
+        }
+        if self.no_move {
+            ds1.set_no_move_to(true);
+        }
+        if self.no_update_ai {
+            ds1.set_no_update_ai_to(true);
+        }
+        if self.disable_collision {
+            ds1.set_disable_collision_to(true);
+        }
+        if self.no_gravity {
+            ds1.set_no_gravity_to(true);
+        }
+        if self.draw_direction {
+            ds1.set_draw_direction_to(true);
+        }
+        if self.draw_counter {
+            ds1.set_draw_counter_to(true);
+        }
+        if self.draw_stable_pos {
+            ds1.set_draw_stable_pos_to(true);
+        }
+        self.last_flag_sync_time = std::time::Instant::now();
     }
 }

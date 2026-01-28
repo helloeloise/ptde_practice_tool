@@ -38,7 +38,6 @@ pub struct Ds1 {
 
 impl Ds1 {
     pub fn new() -> Self {
-        hudhook::alloc_console().ok();
         let mut ds1struct = Ds1 {
             process: Process::new("DARKSOULS.exe"),
             chr_dbg: Pointer::default(),

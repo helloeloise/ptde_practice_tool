@@ -578,22 +578,23 @@ impl Items {
         item_id: i32,
         item_count: i32,
     ) {
-        let inventory_address = ds1
-            .chr_data_2
-            .read_i32_rel(Some(CharData2::INVENTORY_INDEX_START));
         let get_item_base_address = ds1.item_get_pointer.base_address;
+        
+        // Read the resolved address by following chr_data_2 pointer chain, then add inventory offset
+        // This reads from the base with no offset (returns the resolved pointer value)
+        let chr_data_2_resolved = ds1.chr_data_2.read_i32_rel(None) as usize;
+        let inventory_context = (chr_data_2_resolved + CharData2::INVENTORY_INDEX_START) as i32;
 
-        println!("Chardata2 base address: {:#x}", ds1.chr_data_2.base_address);
-        print!("combined offset: {:#x} ", ds1.chr_data_2.base_address + CharData2::INVENTORY_INDEX_START);
+        println!("Chardata2 resolved address: {:#x}", chr_data_2_resolved);
+        println!("Inventory context (resolved + offset): {:#x}", inventory_context);
         println!("Get item base address: {:#x}", get_item_base_address);
-        println!("Inventory address: {:#x}", inventory_address);
         println!(
             "Giving item ID: {}, Category: {:#x}, Count: {}",
             item_id, category, item_count
         );
 
         let item_func: ItemFunc = unsafe { mem::transmute(get_item_base_address) };
-        item_func(0x0A2E31A8, category, item_id, item_count, 1, 0);
+        item_func(inventory_context, category, item_id, item_count, 1, 0);
 
         
     }

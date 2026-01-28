@@ -52,6 +52,7 @@ pub struct DebugInfo {
     current_poise: f32,
     poise_recovery_rate: f32,
     ai_timer: f32,
+    ai_id: u32,
     is_open: bool,
 }
 
@@ -104,6 +105,7 @@ impl DebugInfo {
             current_poise: 0.0,
             poise_recovery_rate: 0.0,
             ai_timer: 0.0,
+            ai_id: 0,
             is_open: false,
         }
     }
@@ -229,6 +231,7 @@ impl DebugInfo {
             .chr_data_1
             .read_f32_rel(Some(CharData1::POISE_RECOVERY_RATE));
         self.ai_timer = ds1.target_bank.read_f32_rel(Some(0x14));
+        self.ai_id = ds1.chr_data_1.read_u32_rel(Some(CharData1::AI_ID));
     }
 
     pub fn get_current_anim_id(&self) -> i32 {
@@ -261,12 +264,13 @@ impl DebugInfo {
                 ));
                 ui.text(format!("Poise: {:.2}", self.current_poise));
                 ui.text(format!("Poise Timer: {:.2}", self.poise_recovery_rate));
-                ui.text(format!("AI Timer: {:.2}", self.ai_timer));
+                ui.text(format!("AI Timer: {:.2} | AI ID: {}", self.ai_timer, self.ai_id));
                 ui.separator();
 
-                // Weapons
-                if ui.collapsing_header("Weapons", imgui::TreeNodeFlags::empty()) {
-                    ui.text("Left Hand 1:");
+                if ui.collapsing_header("Equipment", imgui::TreeNodeFlags::empty()) {
+                    // Weapons
+                    if ui.collapsing_header("Weapons", imgui::TreeNodeFlags::empty()) {
+                        ui.text("Left Hand 1:");
                     ui.set_next_item_width(100.0);
                     if ui
                         .input_int("##left1_idx", &mut self.equip_left_1_idx)
@@ -353,11 +357,11 @@ impl DebugInfo {
                             self.equip_right_2_id,
                         );
                     }
-                }
+                    }
 
-                // Ammo
-                if ui.collapsing_header("Ammo", imgui::TreeNodeFlags::empty()) {
-                    ui.text("Arrow 1:");
+                    // Ammo
+                    if ui.collapsing_header("Ammo", imgui::TreeNodeFlags::empty()) {
+                        ui.text("Arrow 1:");
                     ui.set_next_item_width(100.0);
                     if ui
                         .input_int("##arrow1_idx", &mut self.equip_arrow_1_idx)
@@ -444,11 +448,11 @@ impl DebugInfo {
                         ds1.chr_data_2
                             .write_i32_rel(Some(CharData2::EQUIP_BOLT_2_ID), self.equip_bolt_2_id);
                     }
-                }
+                    }
 
-                // Armor
-                if ui.collapsing_header("Armor", imgui::TreeNodeFlags::empty()) {
-                    ui.text("Helmet:");
+                    // Armor
+                    if ui.collapsing_header("Armor", imgui::TreeNodeFlags::empty()) {
+                        ui.text("Helmet:");
                     ui.set_next_item_width(100.0);
                     if ui
                         .input_int("##helmet_idx", &mut self.equip_helmet_idx)
@@ -529,11 +533,11 @@ impl DebugInfo {
                         ds1.chr_data_2
                             .write_i32_rel(Some(CharData2::EQUIP_HAIR_ID), self.equip_hair_id);
                     }
-                }
+                    }
 
-                // Rings
-                if ui.collapsing_header("Rings", imgui::TreeNodeFlags::empty()) {
-                    ui.text("Ring 1:");
+                    // Rings
+                    if ui.collapsing_header("Rings", imgui::TreeNodeFlags::empty()) {
+                        ui.text("Ring 1:");
                     ui.set_next_item_width(100.0);
                     if ui
                         .input_int("##ring1_idx", &mut self.equip_ring_1_idx)
@@ -574,11 +578,11 @@ impl DebugInfo {
                         ds1.chr_data_2
                             .write_i32_rel(Some(CharData2::EQUIP_RING_2_ID), self.equip_ring_2_id);
                     }
-                }
+                    }
 
-                // Items
-                if ui.collapsing_header("Items", imgui::TreeNodeFlags::empty()) {
-                    ui.text("Item 1:");
+                    // Items
+                    if ui.collapsing_header("Items", imgui::TreeNodeFlags::empty()) {
+                        ui.text("Item 1:");
                     ui.set_next_item_width(100.0);
                     if ui
                         .input_int("##item1_idx", &mut self.equip_item_1_idx)
@@ -681,6 +685,7 @@ impl DebugInfo {
                     {
                         ds1.chr_data_2
                             .write_i32_rel(Some(CharData2::EQUIP_ITEM_5_ID), self.equip_item_5_id);
+                    }
                     }
                 }
             });
