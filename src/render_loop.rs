@@ -470,26 +470,8 @@ impl ImguiRenderLoop for RenderLoop {
                     hudhook::eject();
                 }
 
-                ui.text("Animation Speed:");
-                ui.same_line();
-                if ui.button("-##speed_dec") {
-                    self.anim_speed -= 0.1;
-                    ds1.anim_data.write_f32_rel(
-                        Some(crate::memory::constants::AnimData::PLAY_SPEED),
-                        self.anim_speed,
-                    );
-                }
-                ui.same_line();
-                ui.set_next_item_width(100.0);
-                if ui.input_float("##anim_speed", &mut self.anim_speed).build() {
-                    ds1.anim_data.write_f32_rel(
-                        Some(crate::memory::constants::AnimData::PLAY_SPEED),
-                        self.anim_speed,
-                    );
-                }
-                ui.same_line();
-                if ui.button("+##speed_inc") {
-                    self.anim_speed += 0.1;
+                if ui.input_float("Animation Speed", &mut self.anim_speed).step(0.1).step_fast(1.0).build() {
+                    self.anim_speed = self.anim_speed.max(0.0);
                     ds1.anim_data.write_f32_rel(
                         Some(crate::memory::constants::AnimData::PLAY_SPEED),
                         self.anim_speed,
@@ -622,34 +604,48 @@ impl ImguiRenderLoop for RenderLoop {
                     // Instantiate player stats when Stats section is visible
                     player.instantiate(&mut ds1);
 
-                    if (ui.input_int("Vitality", &mut player.vitality)).build() {
+                    if ui.input_int("Vitality", &mut player.vitality).build() {
+                        player.vitality = player.vitality.max(1);
                         player.set_player_stat(&mut ds1, CharData2::VITALITY, player.vitality);
                     }
-                    if (ui.input_int("Attunement", &mut player.attunement)).build() {
+                    
+                    if ui.input_int("Attunement", &mut player.attunement).build() {
+                        player.attunement = player.attunement.max(1);
                         player.set_player_stat(&mut ds1, CharData2::ATTUNEMENT, player.attunement);
                     }
-                    if (ui.input_int("Endurance", &mut player.endurance)).build() {
+                    
+                    if ui.input_int("Endurance", &mut player.endurance).build() {
+                        player.endurance = player.endurance.max(1);
                         player.set_player_stat(&mut ds1, CharData2::ENDURANCE, player.endurance);
                     }
-                    if (ui.input_int("Strength", &mut player.strength)).build() {
+                    
+                    if ui.input_int("Strength", &mut player.strength).build() {
+                        player.strength = player.strength.max(1);
                         player.set_player_stat(&mut ds1, CharData2::STRENGTH, player.strength);
                     }
-                    if (ui.input_int("Dexterity", &mut player.dexterity)).build() {
+                    
+                    if ui.input_int("Dexterity", &mut player.dexterity).build() {
+                        player.dexterity = player.dexterity.max(1);
                         player.set_player_stat(&mut ds1, CharData2::DEXTERITY, player.dexterity);
                     }
-                    if (ui.input_int("Intelligence", &mut player.intelligence)).build() {
+                    
+                    if ui.input_int("Intelligence", &mut player.intelligence).build() {
+                        player.intelligence = player.intelligence.max(1);
                         player.set_player_stat(
                             &mut ds1,
                             CharData2::INTELLIGENCE,
                             player.intelligence,
                         );
                     }
-                    if (ui.input_int("Faith", &mut player.faith)).build() {
+                    
+                    if ui.input_int("Faith", &mut player.faith).build() {
+                        player.faith = player.faith.max(1);
                         player.set_player_stat(&mut ds1, CharData2::FAITH, player.faith);
                     }
-                    if (ui.input_int("Souls", &mut player.souls)).build() {
-                        ds1.chr_data_2
-                            .write_i32_rel(Some(CharData2::SOULS), player.souls);
+                    
+                    if ui.input_int("Souls", &mut player.souls).step(100).step_fast(1000).build() {
+                        player.souls = player.souls.max(1);
+                        ds1.chr_data_2.write_i32_rel(Some(CharData2::SOULS), player.souls);
                     }
                 }
 
@@ -778,8 +774,9 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        ui.set_next_item_width(200.0);
-                        ui.input_int("Quantity", &mut self.item_quantity).build();
+                        if ui.input_int("Quantity", &mut self.item_quantity).step(1).step_fast(10).build() {
+                            self.item_quantity = self.item_quantity.max(1);
+                        }
 
                         if ui.button("Give Selected Item") {
                             let selected = &item_data[self.selected_item_index];
@@ -827,8 +824,9 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        ui.set_next_item_width(200.0);
-                        ui.input_int("Quantity", &mut self.ring_quantity).build();
+                        if ui.input_int("Quantity", &mut self.ring_quantity).step(1).step_fast(10).build() {
+                            self.ring_quantity = self.ring_quantity.max(1);
+                        }
 
                         if ui.button("Give Selected Ring") {
                             let selected = &ring_data[self.selected_ring_index];
@@ -878,8 +876,9 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        ui.set_next_item_width(200.0);
-                        ui.input_int("Quantity", &mut self.weapon_quantity).build();
+                        if ui.input_int("Quantity", &mut self.weapon_quantity).step(1).step_fast(10).build() {
+                            self.weapon_quantity = self.weapon_quantity.max(1);
+                        }
 
                         let infusion_data = Items::get_infusion_data();
                         let selected_infusion = &infusion_data[self.selected_infusion_index];
@@ -973,8 +972,9 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        ui.set_next_item_width(200.0);
-                        ui.input_int("Quantity", &mut self.armor_quantity).build();
+                        if ui.input_int("Quantity", &mut self.armor_quantity).step(1).step_fast(10).build() {
+                            self.armor_quantity = self.armor_quantity.max(1);
+                        }
 
                         // Determine max upgrade level based on armor type (0=not upgradeable, 1=+5, 2=+10)
                         let max_upgrade_level = match selected_armor.2 {
