@@ -203,6 +203,13 @@ impl Ds1 {
                 vec![0x0],
             )?;
 
+            self.player_exterminate = self.process.scan_abs(
+                "player_exterminate",
+                &offsets::PLAYER_EXTERMINATE_AOB,
+                offsets::PLAYER_EXTERMINATE_AOB_OFFSET,
+                vec![0x0],
+            )?;
+
             self.item_get_pointer = self.process.scan_abs(
                 "item_get_pointer",
                 &offsets::ITEM_GET_AOB,
@@ -369,6 +376,11 @@ impl Ds1 {
 
     pub fn set_no_death_to(&mut self, value: bool) {
         self.no_death_pointer
+            .write_u8_rel(Some(0x0), if value { 0x1 } else { 0x0 });
+    }
+
+    pub fn set_player_exterminate(&mut self, value: bool) {
+        self.player_exterminate
             .write_u8_rel(Some(0x0), if value { 0x1 } else { 0x0 });
     }
 

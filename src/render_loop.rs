@@ -37,6 +37,7 @@ pub struct RenderLoop {
     player_hide: bool,
     player_silence: bool,
     no_death: bool,
+    player_exterminate: bool,
     no_damage: bool,
     no_hit: bool,
     no_attack: bool,
@@ -89,6 +90,7 @@ impl RenderLoop {
             player_hide: false,
             player_silence: false,
             no_death: false,
+            player_exterminate: false,
             no_damage: false,
             no_hit: false,
             no_attack: false,
@@ -571,6 +573,10 @@ impl ImguiRenderLoop for RenderLoop {
                         ds1.set_no_death();
                     }
 
+                    if ui.checkbox("player exterminate", &mut self.player_exterminate) {
+                        ds1.set_player_exterminate(self.player_exterminate);
+                    }
+
                     if ui.checkbox("no damage", &mut self.no_damage) {
                         ds1.set_no_damage();
                     }
@@ -1017,6 +1023,7 @@ impl RenderLoop {
             || self.player_hide
             || self.player_silence
             || self.no_death
+            || self.player_exterminate
             || self.no_damage
             || self.no_hit
             || self.no_attack
@@ -1050,6 +1057,9 @@ impl RenderLoop {
         }
         if self.no_death {
             ds1.set_no_death_to(true);
+        }
+        if self.player_exterminate {
+            ds1.set_player_exterminate(true);
         }
         if self.no_damage {
             ds1.set_no_damage_to(true);
