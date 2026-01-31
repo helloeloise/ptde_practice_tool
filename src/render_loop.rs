@@ -67,7 +67,11 @@ pub struct RenderLoop {
     weapon_search: String,
     weapon_upgrade_level: i32,
     selected_infusion_index: usize,
-    give_item_type: usize, // 0 = items, 1 = rings, 2 = weapons
+    selected_armor_index: usize,
+    armor_quantity: i32,
+    armor_search: String,
+    armor_upgrade_level: i32,
+    give_item_type: usize, // 0 = items, 1 = rings, 2 = weapons, 3 = armor
     show_animation_popup: bool,
     debug_info: crate::ui::DebugInfo,
     anim_speed: f32,
@@ -114,6 +118,10 @@ impl RenderLoop {
             weapon_search: String::new(),
             weapon_upgrade_level: 0,
             selected_infusion_index: 0,
+            selected_armor_index: 0,
+            armor_quantity: 1,
+            armor_search: String::new(),
+            armor_upgrade_level: 0,
             give_item_type: 0,
             show_animation_popup: false,
             debug_info: crate::ui::DebugInfo::new(),
@@ -195,7 +203,7 @@ impl ImguiRenderLoop for RenderLoop {
             // Instantiate player once for all keybinds that need position data
             // This is lazy - only created if a position-related keybind is pressed
             let mut player_for_keybinds: Option<Player> = None;
-            
+
             if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
                 if ui.is_key_pressed(key) {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
@@ -490,7 +498,7 @@ impl ImguiRenderLoop for RenderLoop {
                 if ui.collapsing_header("Positions", imgui::TreeNodeFlags::empty()) {
                     // Update player position data (lightweight operation)
                     player.instantiate_position_only(&mut ds1);
-                    
+
                     for i in 0..3 {
                         ui.text(format!(
                             "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}, Angle: {:.2}, HP: {}",
@@ -504,8 +512,13 @@ impl ImguiRenderLoop for RenderLoop {
 
                         ui.same_line();
                         if ui.button(format!("Store##{}", i)) {
-                            self.stored_positions[i] =
-                                (player.x_pos, player.y_pos, player.z_pos, player.angle, player.hp);
+                            self.stored_positions[i] = (
+                                player.x_pos,
+                                player.y_pos,
+                                player.z_pos,
+                                player.angle,
+                                player.hp,
+                            );
                         }
 
                         ui.same_line();
@@ -517,7 +530,8 @@ impl ImguiRenderLoop for RenderLoop {
                                 self.stored_positions[i].3,
                             );
                             // Restore HP using chr_data_1 offset (current HP)
-                            ds1.chr_data_1.write_i32_rel(Some(0x2D4), self.stored_positions[i].4);
+                            ds1.chr_data_1
+                                .write_i32_rel(Some(0x2D4), self.stored_positions[i].4);
                         }
 
                         ui.separator();
@@ -601,7 +615,7 @@ impl ImguiRenderLoop for RenderLoop {
                 if ui.collapsing_header("Stats", imgui::TreeNodeFlags::empty()) {
                     // Instantiate player stats when Stats section is visible
                     player.instantiate(&mut ds1);
-                    
+
                     if (ui.input_int("Vitality", &mut player.vitality)).build() {
                         player.set_player_stat(&mut ds1, CharData2::VITALITY, player.vitality);
                     }
@@ -717,6 +731,8 @@ impl ImguiRenderLoop for RenderLoop {
                     if ui.radio_button("Rings", &mut self.give_item_type, 1) {}
                     ui.same_line();
                     if ui.radio_button("Weapons", &mut self.give_item_type, 2) {}
+                    ui.same_line();
+                    if ui.radio_button("Armor", &mut self.give_item_type, 3) {}
 
                     ui.separator();
 
@@ -904,6 +920,86 @@ impl ImguiRenderLoop for RenderLoop {
                             );
                         }
                     }
+
+                    // Armor tab
+                    if self.give_item_type == 3 {
+                        ui.set_next_item_width(400.0);
+                        ui.input_text("Search", &mut self.armor_search).build();
+
+                        let armor_data = Items::get_armor_data();
+                        let selected_armor = &armor_data[self.selected_armor_index];
+                        let preview_text = format!("{} (ID: {})", selected_armor.3, selected_armor.0);
+
+                        ui.set_next_item_width(400.0);
+                        if let Some(_combo) = ui.begin_combo("##armor_combo", &preview_text) {
+                            let search_lower = self.armor_search.to_lowercase();
+
+                            for (index, armor) in armor_data.iter().enumerate() {
+                                let armor_name = armor.3;
+
+                                if !search_lower.is_empty()
+                                    && !armor_name.to_lowercase().contains(&search_lower)
+                                {
+                                    continue;
+                                }
+
+                                let is_selected = self.selected_armor_index == index;
+                                let label = format!("{} (ID: {})", armor_name, armor.0);
+
+                                if ui.selectable_config(&label).selected(is_selected).build() {
+                                    self.selected_armor_index = index;
+                                    self.armor_quantity = armor.1;
+                                    // Reset upgrade level when selecting new armor
+                                    let max_upgrade = match armor.2 {
+                                        0 => 0,
+                                        1 => 5,
+                                        2 => 10,
+                                        _ => 0,
+                                    };
+                                    if self.armor_upgrade_level > max_upgrade {
+                                        self.armor_upgrade_level = max_upgrade;
+                                    }
+                                }
+
+                                if is_selected {
+                                    ui.set_item_default_focus();
+                                }
+                            }
+                        }
+
+                        ui.set_next_item_width(200.0);
+                        ui.input_int("Quantity", &mut self.armor_quantity).build();
+
+                        // Determine max upgrade level based on armor type (0=not upgradeable, 1=+5, 2=+10)
+                        let max_upgrade_level = match selected_armor.2 {
+                            0 => 0,
+                            1 => 5,
+                            2 => 10,
+                            _ => 0,
+                        };
+
+                        // Only show upgrade slider if armor can be upgraded
+                        if max_upgrade_level > 0 {
+                            ui.set_next_item_width(200.0);
+                            ui.slider(
+                                "Upgrade Level",
+                                0,
+                                max_upgrade_level,
+                                &mut self.armor_upgrade_level,
+                            );
+                        }
+
+                        if ui.button("Give Selected Armor") {
+                            let selected = &armor_data[self.selected_armor_index];
+                            let upgraded_armor_id = selected.0 + self.armor_upgrade_level;
+                            items_handler.execute_get_item(
+                                &mut ds1,
+                                0x10000000,
+                                upgraded_armor_id,
+                                self.armor_quantity,
+                            );
+                        }
+                    }
                 }
             });
 
@@ -915,11 +1011,22 @@ impl ImguiRenderLoop for RenderLoop {
 impl RenderLoop {
     fn sync_flags_if_needed(&mut self, ds1: &mut Ds1) {
         // Only sync flags every 3 seconds and only if at least one flag is enabled
-        let any_flag_enabled = self.no_stamina_consume || self.infinite_magic || self.infinite_goods
-            || self.player_hide || self.player_silence || self.no_death || self.no_damage
-            || self.no_hit || self.no_attack || self.no_move || self.no_update_ai
-            || self.disable_collision || self.no_gravity || self.draw_direction
-            || self.draw_counter || self.draw_stable_pos;
+        let any_flag_enabled = self.no_stamina_consume
+            || self.infinite_magic
+            || self.infinite_goods
+            || self.player_hide
+            || self.player_silence
+            || self.no_death
+            || self.no_damage
+            || self.no_hit
+            || self.no_attack
+            || self.no_move
+            || self.no_update_ai
+            || self.disable_collision
+            || self.no_gravity
+            || self.draw_direction
+            || self.draw_counter
+            || self.draw_stable_pos;
 
         if !any_flag_enabled || self.last_flag_sync_time.elapsed().as_secs() < 3 {
             return;

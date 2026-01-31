@@ -93,9 +93,7 @@ impl Player {
     }
 
     pub fn swap_gender(&mut self, ds1: &mut Ds1) {
-        let current_gender = ds1
-            .chr_data_2
-            .read_i32_rel(Some(CharData2::GENDER));
+        let current_gender = ds1.chr_data_2.read_i32_rel(Some(CharData2::GENDER));
         let new_gender: i32 = match current_gender {
             1 => 0,
             0 => 1,

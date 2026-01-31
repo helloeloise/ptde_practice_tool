@@ -29,7 +29,6 @@ pub const TARGET_BANK_AOB: &str = "8B 15 ? ? ? ? F3 0F 10 44 24 30 52";
 pub const TARGET_BANK_AOB_OFFSET: usize = 0x2;
 pub const TARGET_BANK_OFFSET1: usize = 0x0;
 
-
 pub const CHAR_DATA_2_AOB: &str = "A1 ? ? ? ? 8B 40 34 53 32 DB 85 C0";
 pub const CHAR_DATA_2_AOB_OFFSET: usize = 0x1;
 pub const CHAR_DATA_2_OFFSET1: usize = 0x0;

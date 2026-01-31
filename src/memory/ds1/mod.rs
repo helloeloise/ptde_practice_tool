@@ -95,14 +95,11 @@ impl Ds1 {
                 ],
             )?;
 
-
-
             self.target_bank = self.process.scan_abs(
                 "target_bank",
                 &offsets::TARGET_BANK_AOB,
                 offsets::TARGET_BANK_AOB_OFFSET,
-                vec![0x0,0x0
-                ],
+                vec![0x0, 0x0],
             )?;
 
             self.char_map_data = self.chr_data_1.clone();
@@ -219,9 +216,6 @@ impl Ds1 {
                 offsets::ALL_NO_MAGIC_QTY_CONSUME_AOB_OFFSET,
                 vec![0x0],
             )?;
-
-
-            
         } else {
             self.process.refresh()?;
         }
