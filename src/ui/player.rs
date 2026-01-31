@@ -147,6 +147,7 @@ impl Player {
 
     pub fn inject_levelup_function(&mut self, ds1: &mut Ds1) {
         let stored_humanity = ds1.chr_data_2.read_i32_rel(Some(CharData2::HUMANITY));
+        let stored_souls = ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS));
         let level_up_fn_address = ds1.level_up.base_address;
 
         println!("Level up function address: {:X}", level_up_fn_address);
@@ -196,14 +197,15 @@ impl Player {
             calculated_level,
         );
 
+        // Write 0 instead of current souls - the game handles soul deduction internally
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x2C).try_into().unwrap(),
-            ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS)),
+            0,
         );
 
         ds1.process.write_i32_abs(
             (level_up_codecave + 0x178).try_into().unwrap(),
-            ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS)),
+            0,
         );
 
         unsafe {
@@ -219,6 +221,8 @@ impl Player {
         }
         ds1.chr_data_2
             .write_i32_rel(Some(CharData2::HUMANITY), stored_humanity);
+        ds1.chr_data_2
+            .write_i32_rel(Some(CharData2::SOULS), stored_souls);
     }
 
     /*
