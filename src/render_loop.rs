@@ -494,7 +494,7 @@ impl ImguiRenderLoop for RenderLoop {
         let mut new_main_pos = [0.0, 0.0];
         let mut new_main_size = [0.0, 0.0];
         
-        ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
+        ui.window("Toolbox Menu")
             .size([main_window_layout.width, main_window_layout.height], Condition::FirstUseEver)
             .position([main_window_layout.pos_x, main_window_layout.pos_y], Condition::FirstUseEver)
             .draw_background(false)
