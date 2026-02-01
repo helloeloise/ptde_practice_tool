@@ -6,6 +6,42 @@ use std::path::Path;
 pub struct Config {
     pub keybinds: Keybinds,
     pub colors: ColorScheme,
+    #[serde(default)]
+    pub window_layout: WindowLayout,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct WindowLayout {
+    #[serde(default = "default_main_window")]
+    pub main_window: WindowState,
+    #[serde(default = "default_debug_window")]
+    pub debug_window: WindowState,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct WindowState {
+    pub width: f32,
+    pub height: f32,
+    pub pos_x: f32,
+    pub pos_y: f32,
+}
+
+fn default_main_window() -> WindowState {
+    WindowState {
+        width: 600.0,
+        height: 800.0,
+        pos_x: 16.0,
+        pos_y: 16.0,
+    }
+}
+
+fn default_debug_window() -> WindowState {
+    WindowState {
+        width: 700.0,
+        height: 850.0,
+        pos_x: 400.0,
+        pos_y: 16.0,
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -104,6 +140,15 @@ impl Config {
     }
 }
 
+impl Default for WindowLayout {
+    fn default() -> Self {
+        WindowLayout {
+            main_window: default_main_window(),
+            debug_window: default_debug_window(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -157,6 +202,7 @@ impl Default for Config {
                     b: 100,
                 },
             },
+            window_layout: WindowLayout::default(),
         }
     }
 }

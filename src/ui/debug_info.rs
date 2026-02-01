@@ -1,9 +1,11 @@
+use crate::config::Config;
 use crate::memory::constants::CharData2;
 use crate::memory::constants::{self, AnimData, CharData1, CharMapData, LevelUp};
 use crate::memory::offsets;
 use crate::memory::{Ds1, ds1};
 use imgui::Condition;
 use mem_rs::prelude::*;
+use std::sync::{Arc, Mutex};
 
 pub struct DebugInfo {
     current_anim_id: i32,
@@ -246,18 +248,31 @@ impl DebugInfo {
         self.is_open
     }
 
-    pub fn render_window(&mut self, ui: &imgui::Ui, ds1: &mut Ds1) {
+    pub fn render_window(&mut self, ui: &imgui::Ui, ds1: &mut Ds1, config: &Arc<Mutex<Config>>) {
         if !self.is_open {
             return;
         }
 
         let _text_style = ui.push_style_color(imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]);
 
+        let config_guard = config.lock().unwrap();
+        let debug_window_layout = config_guard.window_layout.debug_window.clone();
+        drop(config_guard);
+
+        let mut debug_window_changed = false;
+        let mut new_debug_pos = [0.0, 0.0];
+        let mut new_debug_size = [0.0, 0.0];
+
         ui.window("Debug Info")
-            .size([600.0, 700.0], Condition::FirstUseEver)
-            .position([400.0, 16.0], Condition::FirstUseEver)
+            .size([debug_window_layout.width, debug_window_layout.height], Condition::FirstUseEver)
+            .position([debug_window_layout.pos_x, debug_window_layout.pos_y], Condition::FirstUseEver)
             .draw_background(false)
             .build(|| {
+                // Capture window position/size at the start of the frame
+                new_debug_pos = ui.window_pos();
+                new_debug_size = ui.window_size();
+                debug_window_changed = true;
+                
                 ui.text(format!(
                     "Current Animation ID: {}",
                     self.get_current_anim_id()
@@ -730,5 +745,22 @@ impl DebugInfo {
                     }
                 }
             });
+
+        // Save debug window layout if changed
+        if debug_window_changed {
+            let mut config_guard = config.lock().unwrap();
+            let layout = &mut config_guard.window_layout.debug_window;
+            if (layout.pos_x - new_debug_pos[0]).abs() > 1.0
+                || (layout.pos_y - new_debug_pos[1]).abs() > 1.0
+                || (layout.width - new_debug_size[0]).abs() > 1.0
+                || (layout.height - new_debug_size[1]).abs() > 1.0
+            {
+                layout.pos_x = new_debug_pos[0];
+                layout.pos_y = new_debug_pos[1];
+                layout.width = new_debug_size[0];
+                layout.height = new_debug_size[1];
+                let _ = config_guard.save();
+            }
+        }
     }
 }

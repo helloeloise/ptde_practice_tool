@@ -30,7 +30,7 @@ pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
 }
 
 pub struct RenderLoop {
-    config: Config,
+    config: Arc<Mutex<Config>>,
     no_stamina_consume: bool,
     infinite_magic: bool,
     infinite_goods: bool,
@@ -79,11 +79,15 @@ pub struct RenderLoop {
     saved_anim_speed: f32,
     anim_speed_toggled: bool,
     last_flag_sync_time: std::time::Instant,
+    positions_header_open: bool,
+    stats_header_open: bool,
+    give_item_header_open: bool,
+    header_reset_counter: u32,
 }
 impl RenderLoop {
     pub fn new() -> Self {
         RenderLoop {
-            config: Config::load_or_default(),
+            config: Arc::new(Mutex::new(Config::load_or_default())),
             no_stamina_consume: false,
             infinite_magic: false,
             infinite_goods: false,
@@ -131,6 +135,10 @@ impl RenderLoop {
             saved_anim_speed: 1.0,
             anim_speed_toggled: false,
             last_flag_sync_time: std::time::Instant::now(),
+            positions_header_open: false,
+            stats_header_open: false,
+            give_item_header_open: false,
+            header_reset_counter: 0,
         }
     }
 }
@@ -141,11 +149,24 @@ impl ImguiRenderLoop for RenderLoop {
         let mut ds1 = instance.lock().unwrap();
 
         // Check if toggle_menu key is pressed
-        if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_menu) {
-            if ui.is_key_pressed(key) {
-                self.menu_open = !self.menu_open;
+        {
+            let config = self.config.lock().unwrap();
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_menu) {
+                if ui.is_key_pressed(key) {
+                    let was_open = self.menu_open;
+                    self.menu_open = !self.menu_open;
+                    
+                    // Reset headers when reopening the menu
+                    if !was_open && self.menu_open {
+                        self.positions_header_open = false;
+                        self.stats_header_open = false;
+                        self.give_item_header_open = false;
+                        // Increment counter to create new unique IDs and reset imgui state
+                        self.header_reset_counter = self.header_reset_counter.wrapping_add(1);
+                    }
+                }
             }
-        }
+        } // Drop config lock
 
         // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
@@ -164,11 +185,14 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
+        // Lock config once for styling and keybind checks
+        let config = self.config.lock().unwrap();
+        
         // Set custom button colors from config
-        let button_color = self.config.colors.button.to_float4();
-        let button_hovered = self.config.colors.button_hovered.to_float4();
-        let button_active = self.config.colors.button_active.to_float4();
-        let text_color = self.config.colors.text.to_float4();
+        let button_color = config.colors.button.to_float4();
+        let button_hovered = config.colors.button_hovered.to_float4();
+        let button_active = config.colors.button_active.to_float4();
+        let text_color = config.colors.text.to_float4();
 
         let _text_style = ui.push_style_color(imgui::StyleColor::Text, text_color);
         let _text_disabled_style =
@@ -206,13 +230,13 @@ impl ImguiRenderLoop for RenderLoop {
             // This is lazy - only created if a position-related keybind is pressed
             let mut player_for_keybinds: Option<Player> = None;
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.quitout) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.quitout) {
                 if ui.is_key_pressed(key) {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.moveswap) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.moveswap) {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -223,21 +247,21 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_gravity) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_gravity) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_gravity();
                     self.no_gravity = !self.no_gravity;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_collision) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_collision) {
                 if ui.is_key_pressed(key) {
                     ds1.set_disable_collision();
                     self.disable_collision = !self.disable_collision;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.load_position_1) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.load_position_1) {
                 if ui.is_key_pressed(key) {
                     ds1.teleport_player(
                         self.stored_positions[0].0,
@@ -251,14 +275,14 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_update_ai) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_update_ai) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_update_ai();
                     self.no_update_ai = !self.no_update_ai;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_down) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.teleport_down) {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -275,7 +299,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.teleport_up) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.teleport_up) {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -292,7 +316,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.store_position_1) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.store_position_1) {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -310,7 +334,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.restore_full_hp) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.restore_full_hp) {
                 if ui.is_key_pressed(key) {
                     // Read max HP from CharData2 and write it to current HP in CharData1
                     let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
@@ -318,7 +342,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.rtsr_range) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.rtsr_range) {
                 if ui.is_key_pressed(key) {
                     // Set HP to 19% of max HP (under 20% for RTSR activation)
                     let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
@@ -327,109 +351,111 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_stamina) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_stamina) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_stam_consume();
                     self.no_stamina_consume = !self.no_stamina_consume;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_magic) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_infinite_magic) {
                 if ui.is_key_pressed(key) {
                     ds1.set_all_no_magic_quantity_consume();
                     self.infinite_magic = !self.infinite_magic;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_infinite_goods) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_infinite_goods) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_goods_consume();
                     self.infinite_goods = !self.infinite_goods;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_hide) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_player_hide) {
                 if ui.is_key_pressed(key) {
                     ds1.set_player_hide();
                     self.player_hide = !self.player_hide;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_player_silence) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_player_silence) {
                 if ui.is_key_pressed(key) {
                     ds1.set_player_silence();
                     self.player_silence = !self.player_silence;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_death) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_death) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_death();
                     self.no_death = !self.no_death;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_damage) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_damage) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_damage();
                     self.no_damage = !self.no_damage;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_hit) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_hit) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_hit();
                     self.no_hit = !self.no_hit;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_attack) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_attack) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_attack();
                     self.no_attack = !self.no_attack;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_no_move) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_move) {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_move();
                     self.no_move = !self.no_move;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_direction) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_draw_direction) {
                 if ui.is_key_pressed(key) {
                     ds1.set_draw_direction();
                     self.draw_direction = !self.draw_direction;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_counter) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_draw_counter) {
                 if ui.is_key_pressed(key) {
                     ds1.set_draw_counter();
                     self.draw_counter = !self.draw_counter;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_draw_stable_pos) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_draw_stable_pos) {
                 if ui.is_key_pressed(key) {
                     ds1.set_draw_stable_pos();
                     self.draw_stable_pos = !self.draw_stable_pos;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&self.config.keybinds.toggle_debug_info) {
+            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_debug_info) {
                 if ui.is_key_pressed(key) {
                     self.debug_info.toggle();
                 }
             }
         } // End of keybind processing when not typing
 
+        drop(config); // Drop config lock before debug window operations
+        
         // Debug Info Window - Update when visible
         if self.debug_info.is_open() {
             self.debug_info.update(&ds1);
         }
-        self.debug_info.render_window(ui, &mut ds1);
+        self.debug_info.render_window(ui, &mut ds1, &self.config);
 
         // Toggle animation speed with Keypad2
         if ui.is_key_pressed(imgui::Key::Keypad2) {
@@ -448,7 +474,7 @@ impl ImguiRenderLoop for RenderLoop {
                 self.anim_speed,
             );
         }
-
+        
         if !self.menu_open {
             // Sync flags even when menu is closed, but only if needed
             self.sync_flags_if_needed(&mut ds1);
@@ -459,18 +485,38 @@ impl ImguiRenderLoop for RenderLoop {
         let mut player = Player::new();
         let mut bonfire = Bonfire::new();
 
+        let config = self.config.lock().unwrap();
+        let main_window_layout = config.window_layout.main_window.clone();
+        drop(config); // Drop before window operations
+
+        let mut main_window_open = true;
+        let mut main_window_changed = false;
+        let mut new_main_pos = [0.0, 0.0];
+        let mut new_main_size = [0.0, 0.0];
+        
         ui.window("I NEED A NAME FOR THE PRACTICE TOOL PLEASE HELP")
-            .size([450.0, 650.0], Condition::FirstUseEver)
-            .position([16.0, 16.0], Condition::FirstUseEver)
+            .size([main_window_layout.width, main_window_layout.height], Condition::FirstUseEver)
+            .position([main_window_layout.pos_x, main_window_layout.pos_y], Condition::FirstUseEver)
             .draw_background(false)
+            .opened(&mut main_window_open)
             .build(|| {
+                // Capture window position/size at the start of the frame
+                new_main_pos = ui.window_pos();
+                new_main_size = ui.window_size();
+                main_window_changed = true;
+                
                 let mut items_handler = Items::new();
                 if ui.button("Eject") {
                     println!("Eject button pressed!");
                     hudhook::eject();
                 }
 
-                if ui.input_float("Animation Speed", &mut self.anim_speed).step(0.1).step_fast(1.0).build() {
+                if ui
+                    .input_float("Animation Speed", &mut self.anim_speed)
+                    .step(0.1)
+                    .step_fast(1.0)
+                    .build()
+                {
                     self.anim_speed = self.anim_speed.max(0.0);
                     ds1.anim_data.write_f32_rel(
                         Some(crate::memory::constants::AnimData::PLAY_SPEED),
@@ -479,7 +525,14 @@ impl ImguiRenderLoop for RenderLoop {
                 }
                 ui.separator();
 
-                if ui.collapsing_header("Positions", imgui::TreeNodeFlags::empty()) {
+                let positions_flags = if self.positions_header_open {
+                    imgui::TreeNodeFlags::DEFAULT_OPEN
+                } else {
+                    imgui::TreeNodeFlags::empty()
+                };
+                let positions_id = format!("Positions##reset{}", self.header_reset_counter);
+                if ui.collapsing_header(&positions_id, positions_flags) {
+                    self.positions_header_open = true;
                     // Update player position data (lightweight operation)
                     player.instantiate_position_only(&mut ds1);
 
@@ -520,6 +573,8 @@ impl ImguiRenderLoop for RenderLoop {
 
                         ui.separator();
                     }
+                } else {
+                    self.positions_header_open = false;
                 }
 
                 if ui.collapsing_header("Debug Flags", imgui::TreeNodeFlags::DEFAULT_OPEN) {
@@ -600,7 +655,14 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
 
-                if ui.collapsing_header("Stats", imgui::TreeNodeFlags::empty()) {
+                let stats_flags = if self.stats_header_open {
+                    imgui::TreeNodeFlags::DEFAULT_OPEN
+                } else {
+                    imgui::TreeNodeFlags::empty()
+                };
+                let stats_id = format!("Stats##reset{}", self.header_reset_counter);
+                if ui.collapsing_header(&stats_id, stats_flags) {
+                    self.stats_header_open = true;
                     // Instantiate player stats when Stats section is visible
                     player.instantiate(&mut ds1);
 
@@ -608,28 +670,31 @@ impl ImguiRenderLoop for RenderLoop {
                         player.vitality = player.vitality.max(1);
                         player.set_player_stat(&mut ds1, CharData2::VITALITY, player.vitality);
                     }
-                    
+
                     if ui.input_int("Attunement", &mut player.attunement).build() {
                         player.attunement = player.attunement.max(1);
                         player.set_player_stat(&mut ds1, CharData2::ATTUNEMENT, player.attunement);
                     }
-                    
+
                     if ui.input_int("Endurance", &mut player.endurance).build() {
                         player.endurance = player.endurance.max(1);
                         player.set_player_stat(&mut ds1, CharData2::ENDURANCE, player.endurance);
                     }
-                    
+
                     if ui.input_int("Strength", &mut player.strength).build() {
                         player.strength = player.strength.max(1);
                         player.set_player_stat(&mut ds1, CharData2::STRENGTH, player.strength);
                     }
-                    
+
                     if ui.input_int("Dexterity", &mut player.dexterity).build() {
                         player.dexterity = player.dexterity.max(1);
                         player.set_player_stat(&mut ds1, CharData2::DEXTERITY, player.dexterity);
                     }
-                    
-                    if ui.input_int("Intelligence", &mut player.intelligence).build() {
+
+                    if ui
+                        .input_int("Intelligence", &mut player.intelligence)
+                        .build()
+                    {
                         player.intelligence = player.intelligence.max(1);
                         player.set_player_stat(
                             &mut ds1,
@@ -637,16 +702,24 @@ impl ImguiRenderLoop for RenderLoop {
                             player.intelligence,
                         );
                     }
-                    
+
                     if ui.input_int("Faith", &mut player.faith).build() {
                         player.faith = player.faith.max(1);
                         player.set_player_stat(&mut ds1, CharData2::FAITH, player.faith);
                     }
-                    
-                    if ui.input_int("Souls", &mut player.souls).step(100).step_fast(1000).build() {
+
+                    if ui
+                        .input_int("Souls", &mut player.souls)
+                        .step(100)
+                        .step_fast(1000)
+                        .build()
+                    {
                         player.souls = player.souls.max(1);
-                        ds1.chr_data_2.write_i32_rel(Some(CharData2::SOULS), player.souls);
+                        ds1.chr_data_2
+                            .write_i32_rel(Some(CharData2::SOULS), player.souls);
                     }
+                } else {
+                    self.stats_header_open = false;
                 }
 
                 if ui.button("Moveswap") {
@@ -722,11 +795,14 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
 
-                if ui.button("Fast quitout") {
-                    ds1.quitout.write_u32_rel(Some(0x0), 0x2);
-                }
-
-                if ui.collapsing_header("Give item", imgui::TreeNodeFlags::empty()) {
+                let give_item_flags = if self.give_item_header_open {
+                    imgui::TreeNodeFlags::DEFAULT_OPEN
+                } else {
+                    imgui::TreeNodeFlags::empty()
+                };
+                let give_item_id = format!("Give item##reset{}", self.header_reset_counter);
+                if ui.collapsing_header(&give_item_id, give_item_flags) {
+                    self.give_item_header_open = true;
                     // Tab bar for selecting item type
                     if ui.radio_button("Items", &mut self.give_item_type, 0) {}
                     ui.same_line();
@@ -774,7 +850,12 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        if ui.input_int("Quantity", &mut self.item_quantity).step(1).step_fast(10).build() {
+                        if ui
+                            .input_int("Quantity", &mut self.item_quantity)
+                            .step(1)
+                            .step_fast(10)
+                            .build()
+                        {
                             self.item_quantity = self.item_quantity.max(1);
                         }
 
@@ -824,7 +905,12 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        if ui.input_int("Quantity", &mut self.ring_quantity).step(1).step_fast(10).build() {
+                        if ui
+                            .input_int("Quantity", &mut self.ring_quantity)
+                            .step(1)
+                            .step_fast(10)
+                            .build()
+                        {
                             self.ring_quantity = self.ring_quantity.max(1);
                         }
 
@@ -876,7 +962,12 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        if ui.input_int("Quantity", &mut self.weapon_quantity).step(1).step_fast(10).build() {
+                        if ui
+                            .input_int("Quantity", &mut self.weapon_quantity)
+                            .step(1)
+                            .step_fast(10)
+                            .build()
+                        {
                             self.weapon_quantity = self.weapon_quantity.max(1);
                         }
 
@@ -933,7 +1024,8 @@ impl ImguiRenderLoop for RenderLoop {
 
                         let armor_data = Items::get_armor_data();
                         let selected_armor = &armor_data[self.selected_armor_index];
-                        let preview_text = format!("{} (ID: {})", selected_armor.3, selected_armor.0);
+                        let preview_text =
+                            format!("{} (ID: {})", selected_armor.3, selected_armor.0);
 
                         ui.set_next_item_width(400.0);
                         if let Some(_combo) = ui.begin_combo("##armor_combo", &preview_text) {
@@ -972,7 +1064,12 @@ impl ImguiRenderLoop for RenderLoop {
                             }
                         }
 
-                        if ui.input_int("Quantity", &mut self.armor_quantity).step(1).step_fast(10).build() {
+                        if ui
+                            .input_int("Quantity", &mut self.armor_quantity)
+                            .step(1)
+                            .step_fast(10)
+                            .build()
+                        {
                             self.armor_quantity = self.armor_quantity.max(1);
                         }
 
@@ -1006,8 +1103,28 @@ impl ImguiRenderLoop for RenderLoop {
                             );
                         }
                     }
+                } else {
+                    self.give_item_header_open = false;
                 }
             });
+
+        // Save main window layout if changed
+        if main_window_changed {
+            let mut config = self.config.lock().unwrap();
+            let layout = &mut config.window_layout.main_window;
+            if (layout.pos_x - new_main_pos[0]).abs() > 1.0
+                || (layout.pos_y - new_main_pos[1]).abs() > 1.0
+                || (layout.width - new_main_size[0]).abs() > 1.0
+                || (layout.height - new_main_size[1]).abs() > 1.0
+            {
+                layout.pos_x = new_main_pos[0];
+                layout.pos_y = new_main_pos[1];
+                layout.width = new_main_size[0];
+                layout.height = new_main_size[1];
+                let _ = config.save();
+            }
+            drop(config); // Drop config before mutable borrow
+        }
 
         // Sync flags at end of render (non-blocking position)
         self.sync_flags_if_needed(&mut ds1);

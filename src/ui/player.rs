@@ -198,15 +198,11 @@ impl Player {
         );
 
         // Write 0 instead of current souls - the game handles soul deduction internally
-        ds1.process.write_i32_abs(
-            (level_up_codecave + 0x2C).try_into().unwrap(),
-            0,
-        );
+        ds1.process
+            .write_i32_abs((level_up_codecave + 0x2C).try_into().unwrap(), 0);
 
-        ds1.process.write_i32_abs(
-            (level_up_codecave + 0x178).try_into().unwrap(),
-            0,
-        );
+        ds1.process
+            .write_i32_abs((level_up_codecave + 0x178).try_into().unwrap(), 0);
 
         unsafe {
             #[unsafe(no_mangle)]
