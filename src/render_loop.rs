@@ -83,6 +83,7 @@ pub struct RenderLoop {
     stats_header_open: bool,
     give_item_header_open: bool,
     header_reset_counter: u32,
+    last_main_window_save_time: std::time::Instant,
 }
 impl RenderLoop {
     pub fn new() -> Self {
@@ -139,6 +140,7 @@ impl RenderLoop {
             stats_header_open: false,
             give_item_header_open: false,
             header_reset_counter: 0,
+            last_main_window_save_time: std::time::Instant::now(),
         }
     }
 }
@@ -503,7 +505,14 @@ impl ImguiRenderLoop for RenderLoop {
                 // Capture window position/size at the start of the frame
                 new_main_pos = ui.window_pos();
                 new_main_size = ui.window_size();
-                main_window_changed = true;
+                // Only mark as changed if values actually differ
+                if (main_window_layout.pos_x - new_main_pos[0]).abs() > 1.0
+                    || (main_window_layout.pos_y - new_main_pos[1]).abs() > 1.0
+                    || (main_window_layout.width - new_main_size[0]).abs() > 1.0
+                    || (main_window_layout.height - new_main_size[1]).abs() > 1.0
+                {
+                    main_window_changed = true;
+                }
                 
                 let mut items_handler = Items::new();
                 if ui.button("Eject") {
@@ -1108,22 +1117,15 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             });
 
-        // Save main window layout if changed
+        // Track main window layout changes (but don't save yet - wait until menu closes)
         if main_window_changed {
             let mut config = self.config.lock().unwrap();
             let layout = &mut config.window_layout.main_window;
-            if (layout.pos_x - new_main_pos[0]).abs() > 1.0
-                || (layout.pos_y - new_main_pos[1]).abs() > 1.0
-                || (layout.width - new_main_size[0]).abs() > 1.0
-                || (layout.height - new_main_size[1]).abs() > 1.0
-            {
-                layout.pos_x = new_main_pos[0];
-                layout.pos_y = new_main_pos[1];
-                layout.width = new_main_size[0];
-                layout.height = new_main_size[1];
-                let _ = config.save();
-            }
-            drop(config); // Drop config before mutable borrow
+            layout.pos_x = new_main_pos[0];
+            layout.pos_y = new_main_pos[1];
+            layout.width = new_main_size[0];
+            layout.height = new_main_size[1];
+            drop(config);
         }
 
         // Sync flags at end of render (non-blocking position)

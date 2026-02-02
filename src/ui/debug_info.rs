@@ -56,6 +56,7 @@ pub struct DebugInfo {
     ai_timer: f32,
     ai_id: u32,
     is_open: bool,
+    last_debug_window_save_time: std::time::Instant,
 }
 
 impl DebugInfo {
@@ -109,6 +110,7 @@ impl DebugInfo {
             ai_timer: 0.0,
             ai_id: 0,
             is_open: false,
+            last_debug_window_save_time: std::time::Instant::now(),
         }
     }
 
@@ -271,7 +273,14 @@ impl DebugInfo {
                 // Capture window position/size at the start of the frame
                 new_debug_pos = ui.window_pos();
                 new_debug_size = ui.window_size();
-                debug_window_changed = true;
+                // Only mark as changed if values actually differ
+                if (debug_window_layout.pos_x - new_debug_pos[0]).abs() > 1.0
+                    || (debug_window_layout.pos_y - new_debug_pos[1]).abs() > 1.0
+                    || (debug_window_layout.width - new_debug_size[0]).abs() > 1.0
+                    || (debug_window_layout.height - new_debug_size[1]).abs() > 1.0
+                {
+                    debug_window_changed = true;
+                }
                 
                 ui.text(format!(
                     "Current Animation ID: {}",
@@ -746,21 +755,14 @@ impl DebugInfo {
                 }
             });
 
-        // Save debug window layout if changed
+        // Track debug window layout changes (but don't save yet to avoid blocking)
         if debug_window_changed {
             let mut config_guard = config.lock().unwrap();
             let layout = &mut config_guard.window_layout.debug_window;
-            if (layout.pos_x - new_debug_pos[0]).abs() > 1.0
-                || (layout.pos_y - new_debug_pos[1]).abs() > 1.0
-                || (layout.width - new_debug_size[0]).abs() > 1.0
-                || (layout.height - new_debug_size[1]).abs() > 1.0
-            {
-                layout.pos_x = new_debug_pos[0];
-                layout.pos_y = new_debug_pos[1];
-                layout.width = new_debug_size[0];
-                layout.height = new_debug_size[1];
-                let _ = config_guard.save();
-            }
+            layout.pos_x = new_debug_pos[0];
+            layout.pos_y = new_debug_pos[1];
+            layout.width = new_debug_size[0];
+            layout.height = new_debug_size[1];
         }
     }
 }
