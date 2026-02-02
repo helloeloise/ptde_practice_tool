@@ -147,10 +147,7 @@ impl RenderLoop {
 
 impl ImguiRenderLoop for RenderLoop {
     fn render(&mut self, ui: &mut imgui::Ui) {
-        let instance = get_ds1_instance();
-        let mut ds1 = instance.lock().unwrap();
-
-        // Check if toggle_menu key is pressed
+        // Check toggle key FIRST, before acquiring heavy ds1 lock
         {
             let config = self.config.lock().unwrap();
             if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_menu) {
@@ -168,7 +165,11 @@ impl ImguiRenderLoop for RenderLoop {
                     }
                 }
             }
-        } // Drop config lock
+        } // Drop config lock immediately
+        
+        // Acquire ds1 lock only after toggle check
+        let instance = get_ds1_instance();
+        let mut ds1 = instance.lock().unwrap();
 
         // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
