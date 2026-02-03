@@ -154,7 +154,7 @@ impl ImguiRenderLoop for RenderLoop {
                 if ui.is_key_pressed(key) {
                     let was_open = self.menu_open;
                     self.menu_open = !self.menu_open;
-                    
+
                     // Reset headers when reopening the menu
                     if !was_open && self.menu_open {
                         self.positions_header_open = false;
@@ -166,7 +166,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
         } // Drop config lock immediately
-        
+
         // Acquire ds1 lock only after toggle check
         let instance = get_ds1_instance();
         let mut ds1 = instance.lock().unwrap();
@@ -190,7 +190,7 @@ impl ImguiRenderLoop for RenderLoop {
 
         // Lock config once for styling and keybind checks
         let config = self.config.lock().unwrap();
-        
+
         // Set custom button colors from config
         let button_color = config.colors.button.to_float4();
         let button_hovered = config.colors.button_hovered.to_float4();
@@ -453,7 +453,7 @@ impl ImguiRenderLoop for RenderLoop {
         } // End of keybind processing when not typing
 
         drop(config); // Drop config lock before debug window operations
-        
+
         // Debug Info Window - Update when visible
         if self.debug_info.is_open() {
             self.debug_info.update(&ds1);
@@ -477,7 +477,7 @@ impl ImguiRenderLoop for RenderLoop {
                 self.anim_speed,
             );
         }
-        
+
         if !self.menu_open {
             // Sync flags even when menu is closed, but only if needed
             self.sync_flags_if_needed(&mut ds1);
@@ -496,10 +496,16 @@ impl ImguiRenderLoop for RenderLoop {
         let mut main_window_changed = false;
         let mut new_main_pos = [0.0, 0.0];
         let mut new_main_size = [0.0, 0.0];
-        
+
         ui.window("Toolbox Menu")
-            .size([main_window_layout.width, main_window_layout.height], Condition::FirstUseEver)
-            .position([main_window_layout.pos_x, main_window_layout.pos_y], Condition::FirstUseEver)
+            .size(
+                [main_window_layout.width, main_window_layout.height],
+                Condition::FirstUseEver,
+            )
+            .position(
+                [main_window_layout.pos_x, main_window_layout.pos_y],
+                Condition::FirstUseEver,
+            )
             .draw_background(false)
             .opened(&mut main_window_open)
             .build(|| {
@@ -514,7 +520,7 @@ impl ImguiRenderLoop for RenderLoop {
                 {
                     main_window_changed = true;
                 }
-                
+
                 let mut items_handler = Items::new();
                 if ui.button("Eject") {
                     println!("Eject button pressed!");

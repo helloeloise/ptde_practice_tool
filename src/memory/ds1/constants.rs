@@ -179,6 +179,7 @@ impl CharData2 {
     pub const EQUIP_ITEM_4_ID: usize = 0x294;
     pub const EQUIP_ITEM_5_ID: usize = 0x298;
     pub const GENDER: usize = 0xC2;
+    pub const NEW_GAME: usize = 0x3C;
 }
 
 pub struct LevelUp;

@@ -55,6 +55,7 @@ pub struct DebugInfo {
     poise_recovery_rate: f32,
     ai_timer: f32,
     ai_id: u32,
+    new_game_cycle: i32,
     is_open: bool,
     last_debug_window_save_time: std::time::Instant,
 }
@@ -109,6 +110,7 @@ impl DebugInfo {
             poise_recovery_rate: 0.0,
             ai_timer: 0.0,
             ai_id: 0,
+            new_game_cycle: 0,
             is_open: false,
             last_debug_window_save_time: std::time::Instant::now(),
         }
@@ -236,6 +238,7 @@ impl DebugInfo {
             .read_f32_rel(Some(CharData1::POISE_RECOVERY_RATE));
         self.ai_timer = ds1.target_bank.read_f32_rel(Some(0x14));
         self.ai_id = ds1.chr_data_1.read_u32_rel(Some(CharData1::AI_ID));
+        self.new_game_cycle = ds1.chr_data_2.read_i32_rel(Some(CharData2::NEW_GAME));
     }
 
     pub fn get_current_anim_id(&self) -> i32 {
@@ -266,8 +269,14 @@ impl DebugInfo {
         let mut new_debug_size = [0.0, 0.0];
 
         ui.window("Debug Info")
-            .size([debug_window_layout.width, debug_window_layout.height], Condition::FirstUseEver)
-            .position([debug_window_layout.pos_x, debug_window_layout.pos_y], Condition::FirstUseEver)
+            .size(
+                [debug_window_layout.width, debug_window_layout.height],
+                Condition::FirstUseEver,
+            )
+            .position(
+                [debug_window_layout.pos_x, debug_window_layout.pos_y],
+                Condition::FirstUseEver,
+            )
             .draw_background(false)
             .build(|| {
                 // Capture window position/size at the start of the frame
@@ -281,7 +290,7 @@ impl DebugInfo {
                 {
                     debug_window_changed = true;
                 }
-                
+
                 ui.text(format!(
                     "Current Animation ID: {}",
                     self.get_current_anim_id()
@@ -292,6 +301,17 @@ impl DebugInfo {
                     "AI Timer: {:.2} | AI ID: {}",
                     self.ai_timer, self.ai_id
                 ));
+
+                ui.text("New Game Cycle:");
+                ui.same_line();
+                ui.set_next_item_width(100.0);
+                if ui.input_int("##new_game_cycle", &mut self.new_game_cycle).build() {
+                    self.new_game_cycle = self.new_game_cycle.clamp(0, 6);
+                    ds1.chr_data_2.write_i32_rel(
+                        Some(CharData2::NEW_GAME),
+                        self.new_game_cycle,
+                    );
+                }
                 ui.separator();
 
                 if ui.collapsing_header("Equipment", imgui::TreeNodeFlags::empty()) {
