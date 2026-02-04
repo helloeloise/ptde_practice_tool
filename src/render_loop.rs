@@ -79,6 +79,7 @@ pub struct RenderLoop {
     saved_anim_speed: f32,
     anim_speed_toggled: bool,
     last_flag_sync_time: std::time::Instant,
+    last_process_refresh_time: std::time::Instant,
     positions_header_open: bool,
     stats_header_open: bool,
     give_item_header_open: bool,
@@ -136,6 +137,7 @@ impl RenderLoop {
             saved_anim_speed: 1.0,
             anim_speed_toggled: false,
             last_flag_sync_time: std::time::Instant::now(),
+            last_process_refresh_time: std::time::Instant::now(),
             positions_header_open: false,
             stats_header_open: false,
             give_item_header_open: false,
@@ -147,6 +149,16 @@ impl RenderLoop {
 
 impl ImguiRenderLoop for RenderLoop {
     fn render(&mut self, ui: &mut imgui::Ui) {
+        // Periodically refresh process handle to prevent it from going stale
+        // This avoids expensive AOB rescans when the handle becomes invalid after inactivity
+        if self.last_process_refresh_time.elapsed().as_secs() >= 30 {
+            let instance = get_ds1_instance();
+            if let Ok(mut ds1) = instance.lock() {
+                let _ = ds1.process.refresh();
+                self.last_process_refresh_time = std::time::Instant::now();
+            }
+        }
+
         // Check toggle key FIRST, before acquiring heavy ds1 lock
         {
             let config = self.config.lock().unwrap();
@@ -166,6 +178,9 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
         } // Drop config lock immediately
+
+        // Don't return early - keybinds should work even when menu is closed
+        // But we can optimize by checking if we need ds1 at all
 
         // Acquire ds1 lock only after toggle check
         let instance = get_ds1_instance();
