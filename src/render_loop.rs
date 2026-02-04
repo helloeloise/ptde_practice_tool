@@ -539,6 +539,33 @@ impl ImguiRenderLoop for RenderLoop {
                 let mut items_handler = Items::new();
                 if ui.button("Eject") {
                     println!("Eject button pressed!");
+                    
+                    // Restore all modified memory values to their original state before ejecting
+                    println!("Restoring memory values to default state...");
+                    
+                    // Re-enable player input
+                    ds1.input_state.write_u8_rel(None, 0x1);
+                    
+                    // Disable all debug flags
+                    ds1.set_no_stam_consume_to(false);
+                    ds1.set_all_no_magic_quantity_consume_to(false);
+                    ds1.set_no_goods_consume_to(false);
+                    ds1.set_player_hide_to(false);
+                    ds1.set_player_silence_to(false);
+                    ds1.set_no_death_to(false);
+                    ds1.set_player_exterminate(false);
+                    ds1.set_no_damage_to(false);
+                    ds1.set_no_hit_to(false);
+                    ds1.set_no_attack_to(false);
+                    ds1.set_no_move_to(false);
+                    ds1.set_no_update_ai_to(false);
+                    ds1.set_disable_collision_to(false);
+                    ds1.set_no_gravity_to(false);
+                    ds1.set_draw_direction_to(false);
+                    ds1.set_draw_counter_to(false);
+                    ds1.set_draw_stable_pos_to(false);
+                    
+                    println!("Memory cleanup complete. Ejecting...");
                     hudhook::eject();
                 }
 
