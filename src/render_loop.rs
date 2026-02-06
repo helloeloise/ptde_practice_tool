@@ -85,6 +85,7 @@ pub struct RenderLoop {
     give_item_header_open: bool,
     header_reset_counter: u32,
     last_main_window_save_time: std::time::Instant,
+    debug_draw_patches_applied: bool,
 }
 impl RenderLoop {
     pub fn new() -> Self {
@@ -143,12 +144,33 @@ impl RenderLoop {
             give_item_header_open: false,
             header_reset_counter: 0,
             last_main_window_save_time: std::time::Instant::now(),
+            debug_draw_patches_applied: false,
         }
     }
 }
 
 impl ImguiRenderLoop for RenderLoop {
     fn render(&mut self, ui: &mut imgui::Ui) {
+        // Apply debug draw patches on first render when game memory is ready (if enabled in config)
+        #[cfg(target_arch = "x86")]
+        if !self.debug_draw_patches_applied {
+            let enable_debug_draw = self.config.lock().unwrap().enable_debug_draw;
+            if enable_debug_draw {
+                unsafe {
+                    match crate::memory::ds1::debug_draw_hooks::apply_debug_draw_patches() {
+                        Ok(_) => {
+                            self.debug_draw_patches_applied = true;
+                            println!("Debug draw patches applied successfully on first render!");
+                        }
+                        Err(e) => {
+                            println!("Failed to apply debug draw patches: {}", e);
+                            // Don't set flag so we can retry
+                        }
+                    }
+                }
+            }
+        }
+        
         // Periodically refresh process handle to prevent it from going stale
         // This avoids expensive AOB rescans when the handle becomes invalid after inactivity
         if self.last_process_refresh_time.elapsed().as_secs() >= 30 {
@@ -537,6 +559,14 @@ impl ImguiRenderLoop for RenderLoop {
                 }
 
                 let mut items_handler = Items::new();
+                
+                // Debug Draw Patches status
+                if self.debug_draw_patches_applied {
+                    ui.text_disabled("Debug Draw Patches: Applied");
+                } else {
+                    ui.text_disabled("Debug Draw Patches: Initializing...");
+                }
+                
                 if ui.button("Eject") {
                     println!("Eject button pressed!");
                     

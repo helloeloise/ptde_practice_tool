@@ -1,0 +1,57 @@
+Trick to convert from debug to normal "sometimes"  :  
+0xDbgAddr - 0x41c0 
+
+
+
+DEBUG EXECUTABLE ADDRESSES  : 
+
+
+const P_HG_MAN: u32 = 0x137C580;
+const F_ADD_DRAW_PLAN_BEGIN_TARGET_SCENE: u32 = 0x4070F0;
+const F_ADD_DRAW_PLAN_END_TARGET_SCENE: u32 = 0x407180;
+const F_ADD_DRAW_PLAN_END_TARGET_CAMERA: u32 = 0x407080;
+
+// Hook addresses
+const HOOK_ADDRESS_1: u32 = 0xEB3798;
+const HOOK_ADDRESS_2: u32 = 0xEB437D;
+const HOOK_ADDRESS_3: u32 = 0xEB4483;
+
+
+
+
+NORMAL EXECUTABLE ADDRESSES : 
+
+
+const P_HG_MAN: u32 = 0x13783C0;
+const F_ADD_DRAW_PLAN_BEGIN_TARGET_SCENE: u32 = 0x407080;
+const F_ADD_DRAW_PLAN_END_TARGET_SCENE: u32 = ; 
+const F_ADD_DRAW_PLAN_END_TARGET_CAMERA: u32 = 00407110;
+
+// Hook addresses
+const HOOK_ADDRESS_1: u32 = ;
+const HOOK_ADDRESS_2: u32 = ;
+const HOOK_ADDRESS_3: u32 = ;
+
+
+
+
+        00eb377f e8 6c 39        CALL       FUN_004070f0                                     undefined FUN_004070f0(undefined
+                 55 ff
+        00eb3784 83 c4 20        ADD        ESP,0x20
+        00eb3787 8b ce           MOV        ECX,ESI
+        00eb3789 8b c5           MOV        EAX,EBP
+        00eb378b e8 f0 39        CALL       FUN_00407180                                     undefined FUN_00407180()
+                 55 ff
+        00eb3790 8b 73 74        MOV        ESI,dword ptr [EBX + 0x74]
+        00eb3793 e8 98 49        CALL       FUN_00d38130                                     undefined FUN_00d38130()
+                 e8 ff
+        00eb3798 8b 4b 74        MOV        ECX,dword ptr [EBX + 0x74]
+        00eb379b 8b c5           MOV        EAX,EBP
+        00eb379d e8 de 38        CALL       FUN_00407080                                     undefined FUN_00407080()
+                 55 ff
+        00eb37a2 8b 83 90        MOV        EAX,dword ptr [EBX + 0x90]
+                 00 00 00
+        00eb37a8 8b 73 74        MOV        ESI,dword ptr [EBX + 0x74]
+        00eb37ab 50              PUSH       EAX
+        00eb37ac 8b ce           MOV        ECX,ESI
+        00eb37ae 8b c5           MOV        EAX,EBP

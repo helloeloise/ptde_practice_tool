@@ -8,6 +8,8 @@ pub struct Config {
     pub colors: ColorScheme,
     #[serde(default)]
     pub window_layout: WindowLayout,
+    #[serde(default)]
+    pub enable_debug_draw: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -203,6 +205,7 @@ impl Default for Config {
                 },
             },
             window_layout: WindowLayout::default(),
+            enable_debug_draw: false,
         }
     }
 }
