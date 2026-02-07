@@ -305,12 +305,13 @@ impl DebugInfo {
                 ui.text("New Game Cycle:");
                 ui.same_line();
                 ui.set_next_item_width(100.0);
-                if ui.input_int("##new_game_cycle", &mut self.new_game_cycle).build() {
+                if ui
+                    .input_int("##new_game_cycle", &mut self.new_game_cycle)
+                    .build()
+                {
                     self.new_game_cycle = self.new_game_cycle.clamp(0, 6);
-                    ds1.chr_data_2.write_i32_rel(
-                        Some(CharData2::NEW_GAME),
-                        self.new_game_cycle,
-                    );
+                    ds1.chr_data_2
+                        .write_i32_rel(Some(CharData2::NEW_GAME), self.new_game_cycle);
                 }
                 ui.separator();
 

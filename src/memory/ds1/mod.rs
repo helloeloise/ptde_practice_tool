@@ -1,6 +1,6 @@
 pub mod constants;
-pub mod offsets;
 pub mod debug_draw_hooks;
+pub mod offsets;
 
 use crate::memory::{ds1::constants::*, offsets::BONFIRE_WARP_2_OFFSET1};
 use mem_rs::prelude::*;

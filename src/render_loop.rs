@@ -168,9 +168,12 @@ impl ImguiRenderLoop for RenderLoop {
                         }
                     }
                 }
+            } else {
+                // Mark as "applied" (skipped) so we don't keep checking every frame
+                self.debug_draw_patches_applied = true;
             }
         }
-        
+
         // Periodically refresh process handle to prevent it from going stale
         // This avoids expensive AOB rescans when the handle becomes invalid after inactivity
         if self.last_process_refresh_time.elapsed().as_secs() >= 30 {
@@ -559,23 +562,23 @@ impl ImguiRenderLoop for RenderLoop {
                 }
 
                 let mut items_handler = Items::new();
-                
+
                 // Debug Draw Patches status
                 if self.debug_draw_patches_applied {
                     ui.text_disabled("Debug Draw Patches: Applied");
                 } else {
                     ui.text_disabled("Debug Draw Patches: Initializing...");
                 }
-                
+
                 if ui.button("Eject") {
                     println!("Eject button pressed!");
-                    
+
                     // Restore all modified memory values to their original state before ejecting
                     println!("Restoring memory values to default state...");
-                    
+
                     // Re-enable player input
                     ds1.input_state.write_u8_rel(None, 0x1);
-                    
+
                     // Disable all debug flags
                     ds1.set_no_stam_consume_to(false);
                     ds1.set_all_no_magic_quantity_consume_to(false);
@@ -594,7 +597,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ds1.set_draw_direction_to(false);
                     ds1.set_draw_counter_to(false);
                     ds1.set_draw_stable_pos_to(false);
-                    
+
                     println!("Memory cleanup complete. Ejecting...");
                     hudhook::eject();
                 }
