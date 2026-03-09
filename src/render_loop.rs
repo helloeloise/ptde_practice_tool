@@ -3,7 +3,7 @@ use imgui::Condition;
 use mem_rs::memory::ReadWrite;
 use std::sync::{Arc, Mutex};
 
-use crate::config::{Config, string_to_imgui_key};
+use crate::config::{Config, ResolvedKeybinds};
 use crate::memory::constants::{CharData2, CharPosData};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
@@ -85,11 +85,15 @@ pub struct RenderLoop {
     give_item_header_open: bool,
     header_reset_counter: u32,
     last_main_window_save_time: std::time::Instant,
+    resolved_keybinds: ResolvedKeybinds,
 }
 impl RenderLoop {
     pub fn new() -> Self {
+        let config = Config::load_or_default();
+        let resolved_keybinds = ResolvedKeybinds::from_config(&config);
         RenderLoop {
-            config: Arc::new(Mutex::new(Config::load_or_default())),
+            config: Arc::new(Mutex::new(config)),
+            resolved_keybinds,
             no_stamina_consume: false,
             infinite_magic: false,
             infinite_goods: false,
@@ -160,24 +164,22 @@ impl ImguiRenderLoop for RenderLoop {
         }
 
         // Check toggle key FIRST, before acquiring heavy ds1 lock
-        {
-            let config = self.config.lock().unwrap();
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_menu) {
-                if ui.is_key_pressed(key) {
-                    let was_open = self.menu_open;
-                    self.menu_open = !self.menu_open;
+        // Use cached resolved keybind — no mutex lock needed
+        if let Some(key) = self.resolved_keybinds.toggle_menu {
+            if ui.is_key_pressed(key) {
+                let was_open = self.menu_open;
+                self.menu_open = !self.menu_open;
 
-                    // Reset headers when reopening the menu
-                    if !was_open && self.menu_open {
-                        self.positions_header_open = false;
-                        self.stats_header_open = false;
-                        self.give_item_header_open = false;
-                        // Increment counter to create new unique IDs and reset imgui state
-                        self.header_reset_counter = self.header_reset_counter.wrapping_add(1);
-                    }
+                // Reset headers when reopening the menu
+                if !was_open && self.menu_open {
+                    self.positions_header_open = false;
+                    self.stats_header_open = false;
+                    self.give_item_header_open = false;
+                    // Increment counter to create new unique IDs and reset imgui state
+                    self.header_reset_counter = self.header_reset_counter.wrapping_add(1);
                 }
             }
-        } // Drop config lock immediately
+        }
 
         // Don't return early - keybinds should work even when menu is closed
         // But we can optimize by checking if we need ds1 at all
@@ -203,7 +205,7 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
-        // Lock config once for styling and keybind checks
+        // Lock config for styling only — keybinds now use cached resolved_keybinds
         let config = self.config.lock().unwrap();
 
         // Set custom button colors from config
@@ -248,13 +250,13 @@ impl ImguiRenderLoop for RenderLoop {
             // This is lazy - only created if a position-related keybind is pressed
             let mut player_for_keybinds: Option<Player> = None;
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.quitout) {
+            if let Some(key) = self.resolved_keybinds.quitout {
                 if ui.is_key_pressed(key) {
                     ds1.quitout.write_u32_rel(Some(0x0), 0x2);
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.moveswap) {
+            if let Some(key) = self.resolved_keybinds.moveswap {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -265,21 +267,21 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_gravity) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_gravity {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_gravity();
                     self.no_gravity = !self.no_gravity;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_collision) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_collision {
                 if ui.is_key_pressed(key) {
                     ds1.set_disable_collision();
                     self.disable_collision = !self.disable_collision;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.load_position_1) {
+            if let Some(key) = self.resolved_keybinds.load_position_1 {
                 if ui.is_key_pressed(key) {
                     ds1.teleport_player(
                         self.stored_positions[0].0,
@@ -293,14 +295,14 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_update_ai) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_update_ai {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_update_ai();
                     self.no_update_ai = !self.no_update_ai;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.teleport_down) {
+            if let Some(key) = self.resolved_keybinds.teleport_down {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -317,7 +319,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.teleport_up) {
+            if let Some(key) = self.resolved_keybinds.teleport_up {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -334,7 +336,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.store_position_1) {
+            if let Some(key) = self.resolved_keybinds.store_position_1 {
                 if ui.is_key_pressed(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
@@ -352,7 +354,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.restore_full_hp) {
+            if let Some(key) = self.resolved_keybinds.restore_full_hp {
                 if ui.is_key_pressed(key) {
                     // Read max HP from CharData2 and write it to current HP in CharData1
                     let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
@@ -360,7 +362,7 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.rtsr_range) {
+            if let Some(key) = self.resolved_keybinds.rtsr_range {
                 if ui.is_key_pressed(key) {
                     // Set HP to 19% of max HP (under 20% for RTSR activation)
                     let max_hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::MAX_HP));
@@ -369,101 +371,118 @@ impl ImguiRenderLoop for RenderLoop {
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_stamina) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_stamina {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_stam_consume();
                     self.no_stamina_consume = !self.no_stamina_consume;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_infinite_magic) {
+            if let Some(key) = self.resolved_keybinds.toggle_infinite_magic {
                 if ui.is_key_pressed(key) {
                     ds1.set_all_no_magic_quantity_consume();
                     self.infinite_magic = !self.infinite_magic;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_infinite_goods) {
+            if let Some(key) = self.resolved_keybinds.toggle_infinite_goods {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_goods_consume();
                     self.infinite_goods = !self.infinite_goods;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_player_hide) {
+            if let Some(key) = self.resolved_keybinds.toggle_player_hide {
                 if ui.is_key_pressed(key) {
                     ds1.set_player_hide();
                     self.player_hide = !self.player_hide;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_player_silence) {
+            if let Some(key) = self.resolved_keybinds.toggle_player_silence {
                 if ui.is_key_pressed(key) {
                     ds1.set_player_silence();
                     self.player_silence = !self.player_silence;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_death) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_death {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_death();
                     self.no_death = !self.no_death;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_damage) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_damage {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_damage();
                     self.no_damage = !self.no_damage;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_hit) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_hit {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_hit();
                     self.no_hit = !self.no_hit;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_attack) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_attack {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_attack();
                     self.no_attack = !self.no_attack;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_no_move) {
+            if let Some(key) = self.resolved_keybinds.toggle_no_move {
                 if ui.is_key_pressed(key) {
                     ds1.set_no_move();
                     self.no_move = !self.no_move;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_draw_direction) {
+            if let Some(key) = self.resolved_keybinds.toggle_draw_direction {
                 if ui.is_key_pressed(key) {
                     ds1.set_draw_direction();
                     self.draw_direction = !self.draw_direction;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_draw_counter) {
+            if let Some(key) = self.resolved_keybinds.toggle_draw_counter {
                 if ui.is_key_pressed(key) {
                     ds1.set_draw_counter();
                     self.draw_counter = !self.draw_counter;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_draw_stable_pos) {
+            if let Some(key) = self.resolved_keybinds.toggle_draw_stable_pos {
                 if ui.is_key_pressed(key) {
                     ds1.set_draw_stable_pos();
                     self.draw_stable_pos = !self.draw_stable_pos;
                 }
             }
 
-            if let Some(key) = string_to_imgui_key(&config.keybinds.toggle_debug_info) {
+            if let Some(key) = self.resolved_keybinds.toggle_debug_info {
                 if ui.is_key_pressed(key) {
                     self.debug_info.toggle();
                 }
+            }
+
+            // Toggle animation speed (also a keybind, guard it here so it
+            // fires only when the user is not typing in an input field)
+            if ui.is_key_pressed(imgui::Key::Keypad2) {
+                if self.anim_speed_toggled {
+                    self.anim_speed = self.saved_anim_speed;
+                    self.anim_speed_toggled = false;
+                } else {
+                    self.saved_anim_speed = self.anim_speed;
+                    self.anim_speed = 1.0;
+                    self.anim_speed_toggled = true;
+                }
+                ds1.anim_data.write_f32_rel(
+                    Some(crate::memory::constants::AnimData::PLAY_SPEED),
+                    self.anim_speed,
+                );
             }
         } // End of keybind processing when not typing
 
@@ -474,24 +493,6 @@ impl ImguiRenderLoop for RenderLoop {
             self.debug_info.update(&ds1);
         }
         self.debug_info.render_window(ui, &mut ds1, &self.config);
-
-        // Toggle animation speed with Keypad2
-        if ui.is_key_pressed(imgui::Key::Keypad2) {
-            if self.anim_speed_toggled {
-                // Return to saved speed
-                self.anim_speed = self.saved_anim_speed;
-                self.anim_speed_toggled = false;
-            } else {
-                // Save current speed and set to 1.0
-                self.saved_anim_speed = self.anim_speed;
-                self.anim_speed = 1.0;
-                self.anim_speed_toggled = true;
-            }
-            ds1.anim_data.write_f32_rel(
-                Some(crate::memory::constants::AnimData::PLAY_SPEED),
-                self.anim_speed,
-            );
-        }
 
         if !self.menu_open {
             // Sync flags even when menu is closed, but only if needed

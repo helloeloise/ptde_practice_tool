@@ -207,6 +207,72 @@ impl Default for Config {
     }
 }
 
+/// Pre-resolved keybinds — computed once from config strings so the render
+/// hot-path never needs to acquire the config lock or do string matching.
+#[derive(Debug, Clone)]
+pub struct ResolvedKeybinds {
+    pub toggle_menu: Option<imgui::Key>,
+    pub toggle_debug_info: Option<imgui::Key>,
+    pub quitout: Option<imgui::Key>,
+    pub moveswap: Option<imgui::Key>,
+    pub toggle_no_gravity: Option<imgui::Key>,
+    pub toggle_no_collision: Option<imgui::Key>,
+    pub load_position_1: Option<imgui::Key>,
+    pub toggle_no_update_ai: Option<imgui::Key>,
+    pub teleport_down: Option<imgui::Key>,
+    pub teleport_up: Option<imgui::Key>,
+    pub store_position_1: Option<imgui::Key>,
+    pub restore_full_hp: Option<imgui::Key>,
+    pub rtsr_range: Option<imgui::Key>,
+    pub toggle_no_stamina: Option<imgui::Key>,
+    pub toggle_infinite_magic: Option<imgui::Key>,
+    pub toggle_infinite_goods: Option<imgui::Key>,
+    pub toggle_player_hide: Option<imgui::Key>,
+    pub toggle_player_silence: Option<imgui::Key>,
+    pub toggle_no_death: Option<imgui::Key>,
+    pub toggle_no_damage: Option<imgui::Key>,
+    pub toggle_no_hit: Option<imgui::Key>,
+    pub toggle_no_attack: Option<imgui::Key>,
+    pub toggle_no_move: Option<imgui::Key>,
+    pub toggle_draw_direction: Option<imgui::Key>,
+    pub toggle_draw_counter: Option<imgui::Key>,
+    pub toggle_draw_stable_pos: Option<imgui::Key>,
+}
+
+impl ResolvedKeybinds {
+    pub fn from_config(config: &Config) -> Self {
+        let kb = &config.keybinds;
+        ResolvedKeybinds {
+            toggle_menu: string_to_imgui_key(&kb.toggle_menu),
+            toggle_debug_info: string_to_imgui_key(&kb.toggle_debug_info),
+            quitout: string_to_imgui_key(&kb.quitout),
+            moveswap: string_to_imgui_key(&kb.moveswap),
+            toggle_no_gravity: string_to_imgui_key(&kb.toggle_no_gravity),
+            toggle_no_collision: string_to_imgui_key(&kb.toggle_no_collision),
+            load_position_1: string_to_imgui_key(&kb.load_position_1),
+            toggle_no_update_ai: string_to_imgui_key(&kb.toggle_no_update_ai),
+            teleport_down: string_to_imgui_key(&kb.teleport_down),
+            teleport_up: string_to_imgui_key(&kb.teleport_up),
+            store_position_1: string_to_imgui_key(&kb.store_position_1),
+            restore_full_hp: string_to_imgui_key(&kb.restore_full_hp),
+            rtsr_range: string_to_imgui_key(&kb.rtsr_range),
+            toggle_no_stamina: string_to_imgui_key(&kb.toggle_no_stamina),
+            toggle_infinite_magic: string_to_imgui_key(&kb.toggle_infinite_magic),
+            toggle_infinite_goods: string_to_imgui_key(&kb.toggle_infinite_goods),
+            toggle_player_hide: string_to_imgui_key(&kb.toggle_player_hide),
+            toggle_player_silence: string_to_imgui_key(&kb.toggle_player_silence),
+            toggle_no_death: string_to_imgui_key(&kb.toggle_no_death),
+            toggle_no_damage: string_to_imgui_key(&kb.toggle_no_damage),
+            toggle_no_hit: string_to_imgui_key(&kb.toggle_no_hit),
+            toggle_no_attack: string_to_imgui_key(&kb.toggle_no_attack),
+            toggle_no_move: string_to_imgui_key(&kb.toggle_no_move),
+            toggle_draw_direction: string_to_imgui_key(&kb.toggle_draw_direction),
+            toggle_draw_counter: string_to_imgui_key(&kb.toggle_draw_counter),
+            toggle_draw_stable_pos: string_to_imgui_key(&kb.toggle_draw_stable_pos),
+        }
+    }
+}
+
 // Helper function to convert string key names to imgui::Key
 pub fn string_to_imgui_key(key_str: &str) -> Option<imgui::Key> {
     match key_str {
