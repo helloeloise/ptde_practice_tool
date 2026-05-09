@@ -509,7 +509,10 @@ impl Ds1 {
             .write_f32_rel(Some(CharMapData::WARP_Z), z);
         self.char_map_data
             .write_f32_rel(Some(CharMapData::WARP_ANGLE), angle);
-        self.char_map_data.write_u32_rel(Some(CharMapData::WARP), 1);
+        // Pre-write the live angle so it's correct when the warp routine reads it
+        self.char_pos_data
+            .write_f32_rel(Some(CharPosData::POS_ANGLE), angle);
+        self.char_map_data.write_u8_rel(Some(CharMapData::WARP), 1);
     }
 
     pub fn set_disable_collision(&mut self) -> bool {

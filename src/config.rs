@@ -72,6 +72,10 @@ pub struct Keybinds {
     pub toggle_draw_direction: String,
     pub toggle_draw_counter: String,
     pub toggle_draw_stable_pos: String,
+    #[serde(default)]
+    pub store_position_1_angle_only: String,
+    #[serde(default)]
+    pub store_position_1_no_angle: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -179,6 +183,8 @@ impl Default for Config {
                 toggle_draw_direction: "".to_string(),
                 toggle_draw_counter: "".to_string(),
                 toggle_draw_stable_pos: "".to_string(),
+                store_position_1_angle_only: "".to_string(),
+                store_position_1_no_angle: "".to_string(),
             },
             colors: ColorScheme {
                 button: ColorRGB {
@@ -237,6 +243,8 @@ pub struct ResolvedKeybinds {
     pub toggle_draw_direction: Option<imgui::Key>,
     pub toggle_draw_counter: Option<imgui::Key>,
     pub toggle_draw_stable_pos: Option<imgui::Key>,
+    pub store_position_1_angle_only: Option<imgui::Key>,
+    pub store_position_1_no_angle: Option<imgui::Key>,
 }
 
 impl ResolvedKeybinds {
@@ -269,6 +277,8 @@ impl ResolvedKeybinds {
             toggle_draw_direction: string_to_imgui_key(&kb.toggle_draw_direction),
             toggle_draw_counter: string_to_imgui_key(&kb.toggle_draw_counter),
             toggle_draw_stable_pos: string_to_imgui_key(&kb.toggle_draw_stable_pos),
+            store_position_1_angle_only: string_to_imgui_key(&kb.store_position_1_angle_only),
+            store_position_1_no_angle: string_to_imgui_key(&kb.store_position_1_no_angle),
         }
     }
 }

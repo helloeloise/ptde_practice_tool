@@ -6,3 +6,5 @@ pub mod items;
 pub use items::Items;
 pub mod debug_info;
 pub use debug_info::DebugInfo;
+pub mod tas_runner;
+pub use tas_runner::TasRunner;

@@ -4,7 +4,7 @@ use mem_rs::memory::ReadWrite;
 use std::sync::{Arc, Mutex};
 
 use crate::config::{Config, ResolvedKeybinds};
-use crate::memory::constants::{CharData2, CharPosData};
+use crate::memory::constants::{CharData2, CharPosData, WorldState};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
 use crate::ui::DebugInfo;
@@ -16,7 +16,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, GetWindowRect, SetCursorPos,
 };
 
-use crate::ui::{self, Player};
+use crate::ui::{self, Player, TasRunner};
 
 static mut DS1: Option<Arc<Mutex<Ds1>>> = None;
 
@@ -49,7 +49,7 @@ pub struct RenderLoop {
     draw_direction: bool,
     draw_counter: bool,
     draw_stable_pos: bool,
-    stored_positions: [(f32, f32, f32, f32, i32); 3],
+    stored_positions: [Option<(f32, f32, f32, f32, i32)>; 3],
     input_was_disabled: bool,
     show_console: bool,
 
@@ -86,6 +86,8 @@ pub struct RenderLoop {
     header_reset_counter: u32,
     last_main_window_save_time: std::time::Instant,
     resolved_keybinds: ResolvedKeybinds,
+    pending_angle_write: Option<(f32, u32)>,
+    tas_runner: TasRunner,
 }
 impl RenderLoop {
     pub fn new() -> Self {
@@ -112,7 +114,7 @@ impl RenderLoop {
             draw_direction: false,
             draw_counter: false,
             draw_stable_pos: false,
-            stored_positions: [(0.0, 0.0, 0.0, 0.0, 0); 3],
+            stored_positions: [None; 3],
             input_was_disabled: false,
             show_console: false,
             stored_bonfire: 0,
@@ -147,22 +149,14 @@ impl RenderLoop {
             give_item_header_open: false,
             header_reset_counter: 0,
             last_main_window_save_time: std::time::Instant::now(),
+            pending_angle_write: None,
+            tas_runner: TasRunner::new(),
         }
     }
 }
 
 impl ImguiRenderLoop for RenderLoop {
     fn render(&mut self, ui: &mut imgui::Ui) {
-        // Periodically refresh process handle to prevent it from going stale
-        // This avoids expensive AOB rescans when the handle becomes invalid after inactivity
-        if self.last_process_refresh_time.elapsed().as_secs() >= 30 {
-            let instance = get_ds1_instance();
-            if let Ok(mut ds1) = instance.lock() {
-                let _ = ds1.process.refresh();
-                self.last_process_refresh_time = std::time::Instant::now();
-            }
-        }
-
         // Check toggle key FIRST, before acquiring heavy ds1 lock
         // Use cached resolved keybind — no mutex lock needed
         if let Some(key) = self.resolved_keybinds.toggle_menu {
@@ -181,27 +175,48 @@ impl ImguiRenderLoop for RenderLoop {
             }
         }
 
-        // Don't return early - keybinds should work even when menu is closed
-        // But we can optimize by checking if we need ds1 at all
-
-        // Acquire ds1 lock only after toggle check
+        // Acquire ds1 lock
         let instance = get_ds1_instance();
         let mut ds1 = instance.lock().unwrap();
+
+        // Periodically refresh process handle to prevent it from going stale.
+        // Folded into the main lock to avoid acquiring the mutex twice per frame.
+        if self.last_process_refresh_time.elapsed().as_secs() >= 30 {
+            let _ = ds1.process.refresh();
+            self.last_process_refresh_time = std::time::Instant::now();
+        }
 
         // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
         let ui_wants_input = io.want_capture_keyboard || io.want_text_input;
 
-        // Disable game input when menu is open OR when actively typing/interacting with UI
-        if ui_wants_input || self.menu_open {
-            ds1.input_state.write_u8_rel(None, 0x0);
-            if !self.input_was_disabled {
-                self.input_was_disabled = true;
+        // Disable game input when menu is open OR when actively typing/interacting with UI.
+        // Only write on state change, and only once the process is fully attached.
+        // Writing through uninitialized pointer chains during game boot caused black screens.
+        // Do not block input while TAS is running so the TAS can control the game normally.
+        let tas_running = self.tas_runner.is_running();
+        let should_disable_input = !tas_running && (ui_wants_input || self.menu_open);
+        if should_disable_input != self.input_was_disabled {
+            if ds1.process.is_attached() {
+                ds1.input_state.write_u8_rel(None, if should_disable_input { 0x0 } else { 0x1 });
             }
-        } else {
-            ds1.input_state.write_u8_rel(None, 0x1);
-            if self.input_was_disabled {
-                self.input_was_disabled = false;
+            self.input_was_disabled = should_disable_input;
+        }
+
+        // Re-apply angle after the warp byte clears (game has finished processing the warp).
+        // Writing before the warp clears is pointless — the warp routine resets the angle to 0.
+        if let Some((angle, frames)) = self.pending_angle_write {
+            let warp_active = ds1
+                .char_map_data
+                .read_bool_rel(Some(crate::memory::constants::CharMapData::WARP));
+            if !warp_active {
+                ds1.char_pos_data
+                    .write_f32_rel(Some(crate::memory::constants::CharPosData::POS_ANGLE), angle);
+                if frames == 0 {
+                    self.pending_angle_write = None;
+                } else {
+                    self.pending_angle_write = Some((angle, frames - 1));
+                }
             }
         }
 
@@ -283,15 +298,12 @@ impl ImguiRenderLoop for RenderLoop {
 
             if let Some(key) = self.resolved_keybinds.load_position_1 {
                 if ui.is_key_pressed(key) {
-                    ds1.teleport_player(
-                        self.stored_positions[0].0,
-                        self.stored_positions[0].1,
-                        self.stored_positions[0].2,
-                        self.stored_positions[0].3,
-                    );
-                    // Restore HP using chr_data_1 offset (current HP)
-                    ds1.chr_data_1
-                        .write_i32_rel(Some(0x2D4), self.stored_positions[0].4);
+                    if let Some(pos) = self.stored_positions[0] {
+                        ds1.teleport_player(pos.0, pos.1, pos.2, pos.3);
+                        self.pending_angle_write = Some((pos.3, 10));
+                        // Restore HP using chr_data_1 offset (current HP)
+                        ds1.chr_data_1.write_i32_rel(Some(0x2D4), pos.4);
+                    }
                 }
             }
 
@@ -316,6 +328,7 @@ impl ImguiRenderLoop for RenderLoop {
                         player.z_pos,
                         player.angle,
                     );
+                    self.pending_angle_write = Some((player.angle, 10));
                 }
             }
 
@@ -333,24 +346,60 @@ impl ImguiRenderLoop for RenderLoop {
                         player.z_pos,
                         player.angle,
                     );
+                    self.pending_angle_write = Some((player.angle, 10));
                 }
             }
 
             if let Some(key) = self.resolved_keybinds.store_position_1 {
-                if ui.is_key_pressed(key) {
+                if !self.menu_open && ui.is_key_pressed_no_repeat(key) {
                     if player_for_keybinds.is_none() {
                         let mut p = Player::new();
                         p.instantiate_position_only(&mut ds1);
                         player_for_keybinds = Some(p);
                     }
                     let player = player_for_keybinds.as_ref().unwrap();
-                    self.stored_positions[0] = (
+                    self.stored_positions[0] = Some((
                         player.x_pos,
                         player.y_pos,
                         player.z_pos,
                         player.angle,
                         player.hp,
-                    );
+                    ));
+                }
+            }
+
+            if let Some(key) = self.resolved_keybinds.store_position_1_angle_only {
+                if !self.menu_open && ui.is_key_pressed_no_repeat(key) {
+                    if player_for_keybinds.is_none() {
+                        let mut p = Player::new();
+                        p.instantiate_position_only(&mut ds1);
+                        player_for_keybinds = Some(p);
+                    }
+                    let player = player_for_keybinds.as_ref().unwrap();
+                    match self.stored_positions[0] {
+                        Some(ref mut pos) => pos.3 = player.angle,
+                        None => self.stored_positions[0] = Some((player.x_pos, player.y_pos, player.z_pos, player.angle, player.hp)),
+                    }
+                }
+            }
+
+            if let Some(key) = self.resolved_keybinds.store_position_1_no_angle {
+                if !self.menu_open && ui.is_key_pressed_no_repeat(key) {
+                    if player_for_keybinds.is_none() {
+                        let mut p = Player::new();
+                        p.instantiate_position_only(&mut ds1);
+                        player_for_keybinds = Some(p);
+                    }
+                    let player = player_for_keybinds.as_ref().unwrap();
+                    match self.stored_positions[0] {
+                        Some(ref mut pos) => {
+                            pos.0 = player.x_pos;
+                            pos.1 = player.y_pos;
+                            pos.2 = player.z_pos;
+                            pos.4 = player.hp;
+                        }
+                        None => self.stored_positions[0] = Some((player.x_pos, player.y_pos, player.z_pos, player.angle, player.hp)),
+                    }
                 }
             }
 
@@ -491,6 +540,9 @@ impl ImguiRenderLoop for RenderLoop {
         // Debug Info Window - Update when visible
         if self.debug_info.is_open() {
             self.debug_info.update(&ds1);
+            self.debug_info.set_stored_position(
+                self.stored_positions[0].map(|(x, y, z, a, _)| (x, y, z, a)),
+            );
         }
         self.debug_info.render_window(ui, &mut ds1, &self.config);
 
@@ -567,6 +619,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ds1.set_draw_stable_pos_to(false);
                     
                     println!("Memory cleanup complete. Ejecting...");
+                    self.tas_runner.stop();
                     hudhook::eject();
                 }
 
@@ -595,39 +648,51 @@ impl ImguiRenderLoop for RenderLoop {
                     // Update player position data (lightweight operation)
                     player.instantiate_position_only(&mut ds1);
 
-                    for i in 0..3 {
-                        ui.text(format!(
-                            "Slot {} - X: {:.2}, Y: {:.2}, Z: {:.2}, Angle: {:.2}, HP: {}",
-                            i + 1,
-                            self.stored_positions[i].0,
-                            self.stored_positions[i].1,
-                            self.stored_positions[i].2,
-                            self.stored_positions[i].3,
-                            self.stored_positions[i].4
-                        ));
+                    // Read-only display of current and stable positions
+                    ui.text(format!("Current: X:{:.4} Y:{:.4} Z:{:.4} A:{:.4}", player.x_pos, player.y_pos, player.z_pos, player.angle));
+                    let stable_x = ds1.world_state.read_f32_rel(Some(WorldState::POS_X_STABLE));
+                    let stable_y = ds1.world_state.read_f32_rel(Some(WorldState::POS_Y_STABLE));
+                    let stable_z = ds1.world_state.read_f32_rel(Some(WorldState::POS_Z_STABLE));
+                    let stable_angle = ds1.world_state.read_f32_rel(Some(WorldState::POS_ANGLE_STABLE));
+                    ui.text(format!("Stable:  X:{:.4} Y:{:.4} Z:{:.4} A:{:.4}", stable_x, stable_y, stable_z, stable_angle));
+                    ui.separator();
 
+                    for i in 0..3 {
+                        ui.text(format!("Slot {}", i + 1));
                         ui.same_line();
                         if ui.button(format!("Store##{}", i)) {
-                            self.stored_positions[i] = (
+                            self.stored_positions[i] = Some((
                                 player.x_pos,
                                 player.y_pos,
                                 player.z_pos,
                                 player.angle,
                                 player.hp,
-                            );
+                            ));
+                        }
+                        ui.same_line();
+                        {
+                            let _d = ui.begin_disabled(self.stored_positions[i].is_none());
+                            if ui.button(format!("Restore##{}", i)) {
+                                if let Some(pos) = self.stored_positions[i] {
+                                    ds1.teleport_player(pos.0, pos.1, pos.2, pos.3);
+                                    self.pending_angle_write = Some((pos.3, 10));
+                                    ds1.chr_data_1.write_i32_rel(Some(0x2D4), pos.4);
+                                }
+                            }
                         }
 
-                        ui.same_line();
-                        if ui.button(format!("Restore##{}", i)) {
-                            ds1.teleport_player(
-                                self.stored_positions[i].0,
-                                self.stored_positions[i].1,
-                                self.stored_positions[i].2,
-                                self.stored_positions[i].3,
-                            );
-                            // Restore HP using chr_data_1 offset (current HP)
-                            ds1.chr_data_1
-                                .write_i32_rel(Some(0x2D4), self.stored_positions[i].4);
+                        if let Some(ref mut pos) = self.stored_positions[i] {
+                            ui.set_next_item_width(180.0);
+                            ui.input_float(&format!("X##{}", i), &mut pos.0).display_format("%.9f").build();
+                            ui.same_line();
+                            ui.set_next_item_width(180.0);
+                            ui.input_float(&format!("Y##{}", i), &mut pos.1).display_format("%.9f").build();
+                            ui.same_line();
+                            ui.set_next_item_width(180.0);
+                            ui.input_float(&format!("Z##{}", i), &mut pos.2).display_format("%.9f").build();
+                            ui.same_line();
+                            ui.set_next_item_width(180.0);
+                            ui.input_float(&format!("Angle##{}", i), &mut pos.3).display_format("%.9f").build();
                         }
 
                         ui.separator();
@@ -1165,9 +1230,16 @@ impl ImguiRenderLoop for RenderLoop {
                 } else {
                     self.give_item_header_open = false;
                 }
+
+                self.tas_runner.render_section(ui);
             });
 
-        // Track main window layout changes (but don't save yet - wait until menu closes)
+        // If the user clicked the X button on the main window, close the menu.
+        if !main_window_open {
+            self.menu_open = false;
+        }
+
+        // Track main window layout changes and persist to disk (throttled to 2s intervals)
         if main_window_changed {
             let mut config = self.config.lock().unwrap();
             let layout = &mut config.window_layout.main_window;
@@ -1175,6 +1247,10 @@ impl ImguiRenderLoop for RenderLoop {
             layout.pos_y = new_main_pos[1];
             layout.width = new_main_size[0];
             layout.height = new_main_size[1];
+            if self.last_main_window_save_time.elapsed().as_secs() >= 2 {
+                let _ = config.save();
+                self.last_main_window_save_time = std::time::Instant::now();
+            }
             drop(config);
         }
 

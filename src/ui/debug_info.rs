@@ -50,6 +50,15 @@ pub struct DebugInfo {
     equip_item_4_id: i32,
     equip_item_5_idx: i32,
     equip_item_5_id: i32,
+    x_pos: f32,
+    y_pos: f32,
+    z_pos: f32,
+    angle: f32,
+    stored_x: f32,
+    stored_y: f32,
+    stored_z: f32,
+    stored_angle: f32,
+    stored_pos_set: bool,
     stance: i32,
     current_poise: f32,
     poise_recovery_rate: f32,
@@ -105,6 +114,15 @@ impl DebugInfo {
             equip_item_4_id: 0,
             equip_item_5_idx: 0,
             equip_item_5_id: 0,
+            x_pos: 0.0,
+            y_pos: 0.0,
+            z_pos: 0.0,
+            angle: 0.0,
+            stored_x: 0.0,
+            stored_y: 0.0,
+            stored_z: 0.0,
+            stored_angle: 0.0,
+            stored_pos_set: false,
             stance: 0,
             current_poise: 0.0,
             poise_recovery_rate: 0.0,
@@ -231,6 +249,10 @@ impl DebugInfo {
         self.equip_item_5_id = ds1
             .chr_data_2
             .read_i32_rel(Some(CharData2::EQUIP_ITEM_5_ID));
+        self.x_pos = ds1.get_x_pos();
+        self.y_pos = ds1.get_y_pos();
+        self.z_pos = ds1.get_z_pos();
+        self.angle = ds1.get_angle();
         self.stance = ds1.chr_data_2.read_i32_rel(Some(CharData2::STANCE));
         self.current_poise = ds1.chr_data_1.read_f32_rel(Some(CharData1::CURRENT_POISE));
         self.poise_recovery_rate = ds1
@@ -243,6 +265,21 @@ impl DebugInfo {
 
     pub fn get_current_anim_id(&self) -> i32 {
         self.current_anim_id
+    }
+
+    pub fn set_stored_position(&mut self, pos: Option<(f32, f32, f32, f32)>) {
+        match pos {
+            Some((x, y, z, angle)) => {
+                self.stored_x = x;
+                self.stored_y = y;
+                self.stored_z = z;
+                self.stored_angle = angle;
+                self.stored_pos_set = true;
+            }
+            None => {
+                self.stored_pos_set = false;
+            }
+        }
     }
 
     pub fn toggle(&mut self) {
@@ -277,6 +314,7 @@ impl DebugInfo {
                 [debug_window_layout.pos_x, debug_window_layout.pos_y],
                 Condition::FirstUseEver,
             )
+            .title_bar(false)
             .draw_background(false)
             .build(|| {
                 // Capture window position/size at the start of the frame
@@ -295,6 +333,19 @@ impl DebugInfo {
                     "Current Animation ID: {}",
                     self.get_current_anim_id()
                 ));
+                ui.text(format!(
+                    "Position: ({:.9}, {:.9}, {:.9})",
+                    self.x_pos, self.y_pos, self.z_pos
+                ));
+                ui.text(format!("Angle: {:.9}", self.angle));
+                if self.stored_pos_set {
+                    ui.text(format!(
+                        "Stored:   ({:.9}, {:.9}, {:.9}) | {:.9}",
+                        self.stored_x, self.stored_y, self.stored_z, self.stored_angle
+                    ));
+                } else {
+                    ui.text("Stored:   (not set)");
+                }
                 ui.text(format!("Poise: {:.2}", self.current_poise));
                 ui.text(format!("Poise Timer: {:.2}", self.poise_recovery_rate));
                 ui.text(format!(
@@ -775,7 +826,7 @@ impl DebugInfo {
                 }
             });
 
-        // Track debug window layout changes (but don't save yet to avoid blocking)
+        // Track debug window layout changes and persist to disk (throttled to 2s intervals)
         if debug_window_changed {
             let mut config_guard = config.lock().unwrap();
             let layout = &mut config_guard.window_layout.debug_window;
@@ -783,6 +834,10 @@ impl DebugInfo {
             layout.pos_y = new_debug_pos[1];
             layout.width = new_debug_size[0];
             layout.height = new_debug_size[1];
+            if self.last_debug_window_save_time.elapsed().as_secs() >= 2 {
+                let _ = config_guard.save();
+                self.last_debug_window_save_time = std::time::Instant::now();
+            }
         }
     }
 }

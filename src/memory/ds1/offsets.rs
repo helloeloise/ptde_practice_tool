@@ -76,3 +76,6 @@ pub const ITEM_DROP_UNKNOWN_2_AOB_OFFSET: usize = 0x4;
 
 pub const ALL_NO_MAGIC_QTY_CONSUME_AOB: &str = "38 1D ? ? ? ? 0F 94 C1 3A CB";
 pub const ALL_NO_MAGIC_QTY_CONSUME_AOB_OFFSET: usize = 0x2;
+
+
+pub const PHANTOM_TYPE_AOB: &str = "33 ? 83 ? ? 0F 87 ? ? ? ? FF ? ? ? ? ? ? 84 ? 0F 84 ? ? ? ? B8 ? ? ? ? C3";
