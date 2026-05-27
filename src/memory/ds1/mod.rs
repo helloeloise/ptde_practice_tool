@@ -19,6 +19,7 @@ pub struct Ds1 {
     pub char_map_data: Pointer,                 // chr_data_1 (aob), 0x2, 0x0, 0x4, 0x0 0x2
     pub anim_data: Pointer,
     pub chr_data_2: Pointer,
+    pub game_data_mgr: Pointer,
     pub char_pos_data: Pointer, // 0x1, 0x0, 0x8
     pub no_stam_consume: bool,
     pub level_up: Pointer,
@@ -52,6 +53,7 @@ impl Ds1 {
             char_map_data: Pointer::default(),
             anim_data: Pointer::default(),
             chr_data_2: Pointer::default(),
+            game_data_mgr: Pointer::default(),
             char_pos_data: Pointer::default(),
             level_up: Pointer::default(),
             no_stam_consume: false,
@@ -124,6 +126,13 @@ impl Ds1 {
                     offsets::CHAR_DATA_2_OFFSET1,
                     offsets::CHAR_DATA_2_OFFSET2,
                 ],
+            )?;
+
+            self.game_data_mgr = self.process.scan_abs(
+                "game_data_mgr",
+                &offsets::CHAR_DATA_2_AOB,
+                offsets::CHAR_DATA_2_AOB_OFFSET,
+                vec![0x0],
             )?;
 
             self.level_up =
@@ -250,7 +259,55 @@ impl Ds1 {
             .read_f32_rel(Some(CharPosData::POS_ANGLE))
     }
 
-    pub fn get_no_stam_consume(&mut self) -> bool {
+    pub fn get_death_count(&self) -> i32 {
+        self.game_data_mgr.read_i32_rel(Some(GameDataMgr::DEATH_COUNT))
+    }
+
+    pub fn set_death_count(&mut self, value: i32) {
+        self.game_data_mgr.write_i32_rel(Some(GameDataMgr::DEATH_COUNT), value);
+    }
+
+    pub fn get_ng_plus(&self) -> u8 {
+        self.game_data_mgr.read_u8_rel(Some(GameDataMgr::NG_PLUS))
+    }
+
+    pub fn set_ng_plus(&mut self, value: u8) {
+        self.game_data_mgr.write_u8_rel(Some(GameDataMgr::NG_PLUS), value);
+    }
+
+    pub fn get_disable_enemies(&self) -> bool {
+        self.world_state.read_bool_rel(Some(WorldState::DISABLE_ENEMIES))
+    }
+
+    pub fn set_disable_enemies_to(&mut self, value: bool) {
+        self.world_state.write_u8_rel(Some(WorldState::DISABLE_ENEMIES), if value { 1 } else { 0 });
+    }
+
+    pub fn get_disable_events(&self) -> bool {
+        self.world_state.read_bool_rel(Some(WorldState::DISABLE_EVENTS))
+    }
+
+    pub fn set_disable_events_to(&mut self, value: bool) {
+        self.world_state.write_u8_rel(Some(WorldState::DISABLE_EVENTS), if value { 1 } else { 0 });
+    }
+
+    pub fn get_auto_save(&self) -> bool {
+        self.world_state.read_bool_rel(Some(WorldState::AUTO_SAVE))
+    }
+
+    pub fn set_auto_save_to(&mut self, value: bool) {
+        self.world_state.write_u8_rel(Some(WorldState::AUTO_SAVE), if value { 1 } else { 0 });
+    }
+
+    pub fn get_online_mode(&self) -> bool {
+        self.world_state.read_bool_rel(Some(WorldState::ONLINE_MODE))
+    }
+
+    pub fn set_online_mode_to(&mut self, value: bool) {
+        self.world_state.write_u8_rel(Some(WorldState::ONLINE_MODE), if value { 1 } else { 0 });
+    }
+
+    pub fn get_no_stamina_consume(&mut self) -> bool {
         let no_stamina_consume = self
             .chr_dbg
             .read_bool_rel(Some(ChrDbg::ALL_NO_STAMINA_CONSUME));
@@ -327,7 +384,7 @@ impl Ds1 {
     }
 
     pub fn set_no_stam_consume(&mut self) -> bool {
-        let no_stamina_consume = self.get_no_stam_consume();
+        let no_stamina_consume = self.get_no_stamina_consume();
         if no_stamina_consume == false {
             self.chr_dbg
                 .write_u8_rel(Some(ChrDbg::ALL_NO_STAMINA_CONSUME), 0x1);

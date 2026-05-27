@@ -4,7 +4,7 @@ use mem_rs::memory::ReadWrite;
 use std::sync::{Arc, Mutex};
 
 use crate::config::{Config, ResolvedKeybinds};
-use crate::memory::constants::{CharData2, CharPosData, WorldState};
+use crate::memory::constants::{CharData1, CharData2, CharPosData, WorldState};
 use crate::memory::{Ds1, ds1};
 use crate::ui::Bonfire;
 use crate::ui::DebugInfo;
@@ -49,6 +49,10 @@ pub struct RenderLoop {
     draw_direction: bool,
     draw_counter: bool,
     draw_stable_pos: bool,
+    disable_enemies: bool,
+    disable_events: bool,
+    auto_save_disabled: bool,
+    offline_mode: bool,
     stored_positions: [Option<(f32, f32, f32, f32, i32)>; 3],
     input_was_disabled: bool,
     show_console: bool,
@@ -114,6 +118,10 @@ impl RenderLoop {
             draw_direction: false,
             draw_counter: false,
             draw_stable_pos: false,
+            disable_enemies: false,
+            disable_events: false,
+            auto_save_disabled: false,
+            offline_mode: false,
             stored_positions: [None; 3],
             input_was_disabled: false,
             show_console: false,
@@ -617,6 +625,10 @@ impl ImguiRenderLoop for RenderLoop {
                     ds1.set_draw_direction_to(false);
                     ds1.set_draw_counter_to(false);
                     ds1.set_draw_stable_pos_to(false);
+                    ds1.set_disable_enemies_to(false);
+                    ds1.set_disable_events_to(false);
+                    ds1.set_auto_save_to(true);
+                    ds1.set_online_mode_to(true);
                     
                     println!("Memory cleanup complete. Ejecting...");
                     self.tas_runner.stop();
@@ -777,6 +789,23 @@ impl ImguiRenderLoop for RenderLoop {
                     if ui.checkbox("draw stable pos", &mut self.draw_stable_pos) {
                         ds1.set_draw_stable_pos();
                     }
+
+                    ui.separator();
+                    if ui.checkbox("disable enemies", &mut self.disable_enemies) {
+                        ds1.set_disable_enemies_to(self.disable_enemies);
+                    }
+
+                    if ui.checkbox("disable events", &mut self.disable_events) {
+                        ds1.set_disable_events_to(self.disable_events);
+                    }
+
+                    if ui.checkbox("disable auto-save", &mut self.auto_save_disabled) {
+                        ds1.set_auto_save_to(!self.auto_save_disabled);
+                    }
+
+                    if ui.checkbox("offline mode", &mut self.offline_mode) {
+                        ds1.set_online_mode_to(!self.offline_mode);
+                    }
                 }
 
                 let stats_flags = if self.stats_header_open {
@@ -841,6 +870,40 @@ impl ImguiRenderLoop for RenderLoop {
                         player.souls = player.souls.max(1);
                         ds1.chr_data_2
                             .write_i32_rel(Some(CharData2::SOULS), player.souls);
+                    }
+
+                    if ui.input_int("Humanity", &mut player.humanity).build() {
+                        player.humanity = player.humanity.max(0);
+                        ds1.chr_data_2
+                            .write_i32_rel(Some(CharData2::HUMANITY), player.humanity);
+                    }
+
+                    if ui
+                        .input_int("MP", &mut player.mp)
+                        .step(10)
+                        .step_fast(100)
+                        .build()
+                    {
+                        player.mp = player.mp.max(0);
+                        ds1.chr_data_1
+                            .write_i32_rel(Some(CharData1::MP), player.mp);
+                    }
+
+                    ui.text(format!(
+                        "Max MP: {}  |  Stamina Max: {}",
+                        player.max_mp, player.max_stamina
+                    ));
+
+                    let mut death_count = ds1.get_death_count();
+                    if ui.input_int("Deaths", &mut death_count).build() {
+                        death_count = death_count.max(0);
+                        ds1.set_death_count(death_count);
+                    }
+
+                    let mut ng_plus = ds1.get_ng_plus() as i32;
+                    if ui.input_int("NG+", &mut ng_plus).build() {
+                        ng_plus = ng_plus.clamp(0, 7);
+                        ds1.set_ng_plus(ng_plus as u8);
                     }
                 } else {
                     self.stats_header_open = false;
@@ -1278,7 +1341,11 @@ impl RenderLoop {
             || self.no_gravity
             || self.draw_direction
             || self.draw_counter
-            || self.draw_stable_pos;
+            || self.draw_stable_pos
+            || self.disable_enemies
+            || self.disable_events
+            || self.auto_save_disabled
+            || self.offline_mode;
 
         if !any_flag_enabled || self.last_flag_sync_time.elapsed().as_secs() < 3 {
             return;
@@ -1335,6 +1402,18 @@ impl RenderLoop {
         }
         if self.draw_stable_pos {
             ds1.set_draw_stable_pos_to(true);
+        }
+        if self.disable_enemies {
+            ds1.set_disable_enemies_to(true);
+        }
+        if self.disable_events {
+            ds1.set_disable_events_to(true);
+        }
+        if self.auto_save_disabled {
+            ds1.set_auto_save_to(false);
+        }
+        if self.offline_mode {
+            ds1.set_online_mode_to(false);
         }
         self.last_flag_sync_time = std::time::Instant::now();
     }

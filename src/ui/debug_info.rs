@@ -65,6 +65,10 @@ pub struct DebugInfo {
     ai_timer: f32,
     ai_id: u32,
     new_game_cycle: i32,
+    poison_resist: i32,
+    bleed_resist: i32,
+    disease_resist: i32,
+    curse_resist: i32,
     is_open: bool,
     last_debug_window_save_time: std::time::Instant,
 }
@@ -129,6 +133,10 @@ impl DebugInfo {
             ai_timer: 0.0,
             ai_id: 0,
             new_game_cycle: 0,
+            poison_resist: 0,
+            bleed_resist: 0,
+            disease_resist: 0,
+            curse_resist: 0,
             is_open: false,
             last_debug_window_save_time: std::time::Instant::now(),
         }
@@ -261,6 +269,10 @@ impl DebugInfo {
         self.ai_timer = ds1.target_bank.read_f32_rel(Some(0x14));
         self.ai_id = ds1.chr_data_1.read_u32_rel(Some(CharData1::AI_ID));
         self.new_game_cycle = ds1.chr_data_2.read_i32_rel(Some(CharData2::NEW_GAME));
+        self.poison_resist = ds1.chr_data_2.read_i32_rel(Some(CharData2::POISON_RESIST));
+        self.bleed_resist = ds1.chr_data_2.read_i32_rel(Some(CharData2::BLEED_RESIST));
+        self.disease_resist = ds1.chr_data_2.read_i32_rel(Some(CharData2::DISEASE_RESIST));
+        self.curse_resist = ds1.chr_data_2.read_i32_rel(Some(CharData2::CURSE_RESIST));
     }
 
     pub fn get_current_anim_id(&self) -> i32 {
@@ -363,6 +375,15 @@ impl DebugInfo {
                         self.new_game_cycle,
                     );
                 }
+                ui.separator();
+                ui.text(format!(
+                    "Poison Resist: {} | Bleed Resist: {}",
+                    self.poison_resist, self.bleed_resist
+                ));
+                ui.text(format!(
+                    "Disease Resist: {} | Curse Resist: {}",
+                    self.disease_resist, self.curse_resist
+                ));
                 ui.separator();
 
                 if ui.collapsing_header("Equipment", imgui::TreeNodeFlags::empty()) {
@@ -824,6 +845,7 @@ impl DebugInfo {
                         }
                     }
                 }
+
             });
 
         // Track debug window layout changes and persist to disk (throttled to 2s intervals)

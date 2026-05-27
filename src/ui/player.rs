@@ -18,6 +18,11 @@ pub struct Player {
     pub hp: i32,
     pub stamina: i32,
 
+    pub humanity: i32,
+    pub mp: i32,
+    pub max_mp: i32,
+    pub max_stamina: i32,
+
     pub vitality: i32,
     pub attunement: i32,
     pub endurance: i32,
@@ -45,6 +50,11 @@ impl Player {
 
             hp: 0,
             stamina: 0,
+
+            humanity: 0,
+            mp: 0,
+            max_mp: 0,
+            max_stamina: 0,
 
             vitality: 0,
             attunement: 0,
@@ -85,6 +95,10 @@ impl Player {
         self.hp = ds1.chr_data_2.read_i32_rel(Some(CharData2::HP));
         self.stamina = ds1.chr_data_2.read_i32_rel(Some(CharData2::STAMINA));
         self.souls = ds1.chr_data_2.read_i32_rel(Some(CharData2::SOULS));
+        self.humanity = ds1.chr_data_2.read_i32_rel(Some(CharData2::HUMANITY));
+        self.mp = ds1.chr_data_1.read_i32_rel(Some(CharData1::MP));
+        self.max_mp = ds1.chr_data_1.read_i32_rel(Some(CharData1::MAX_MP));
+        self.max_stamina = ds1.chr_data_1.read_i32_rel(Some(CharData1::MAX_STAMINA));
 
         self.current_poise = ds1.chr_data_1.read_f32_rel(Some(CharData1::CURRENT_POISE));
         self.poise_recovery_rate = ds1

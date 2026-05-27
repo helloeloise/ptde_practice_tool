@@ -36,7 +36,10 @@ impl CharData1 {
     pub const CHAR_FLAGS_1: usize = 0x1FC;
     pub const PLAY_REGION: usize = 0x284;
     pub const HP: usize = 0x2D4;
+    pub const MP: usize = 0x2DC;
+    pub const MAX_MP: usize = 0x2E0;
     pub const STAMINA: usize = 0x2E4;
+    pub const MAX_STAMINA: usize = 0x2E8;
     pub const CHAR_FLAGS_2: usize = 0x3C4;
     pub const STORED_ITEM: usize = 0x628;
     pub const CURRENT_POISE: usize = 0x1c0;
@@ -136,6 +139,10 @@ impl CharData2 {
     pub const SOUL_LEVEL: usize = 0x88;
     pub const SOULS: usize = 0x8C;
     pub const HUMANITY: usize = 0x7C;
+    pub const POISON_RESIST: usize = 0xF8;
+    pub const BLEED_RESIST: usize = 0xFC;
+    pub const DISEASE_RESIST: usize = 0x100;
+    pub const CURSE_RESIST: usize = 0x104;
     pub const INVENTORY_INDEX_START: usize = 0x1B8;
     pub const EQUIP_LEFT_1_IDX: usize = 0x1D4;
     pub const EQUIP_RIGHT_1_IDX: usize = 0x1D8;
@@ -203,8 +210,21 @@ pub struct WorldState;
 #[allow(dead_code)]
 impl WorldState {
     pub const LAST_BONFIRE: usize = 0xB04;
+    pub const AUTO_SAVE: usize = 0xB40;
+    pub const ONLINE_MODE: usize = 0xB4D;
     pub const POS_X_STABLE: usize = 0xB70;
     pub const POS_Y_STABLE: usize = 0xB74;
     pub const POS_Z_STABLE: usize = 0xB78;
     pub const POS_ANGLE_STABLE: usize = 0xB84;
+    pub const DISABLE_ENEMIES: usize = 0xC2C;
+    pub const DISABLE_EVENTS: usize = 0xC2D;
+}
+
+pub struct GameDataMgr;
+
+#[allow(dead_code)]
+impl GameDataMgr {
+    pub const NG_PLUS: usize = 0x3C;
+    pub const DEATH_COUNT: usize = 0x5C;
+    pub const PLAY_TIME: usize = 0x68;
 }
