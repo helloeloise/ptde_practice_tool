@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-hudhook = "0.7.0"
+hudhook = "=0.7.0"
 imgui = "0.12.0"
-mem-rs = "0.2.5"
-windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_Graphics_Gdi"] }
+mem-rs = "0.2.4"
+windows-sys = { version = "0.52", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_Memory", "Win32_UI_Input_XboxController", "Win32_UI_Input_KeyboardAndMouse"] }
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 

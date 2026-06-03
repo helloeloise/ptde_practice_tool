@@ -77,5 +77,61 @@ pub const ITEM_DROP_UNKNOWN_2_AOB_OFFSET: usize = 0x4;
 pub const ALL_NO_MAGIC_QTY_CONSUME_AOB: &str = "38 1D ? ? ? ? 0F 94 C1 3A CB";
 pub const ALL_NO_MAGIC_QTY_CONSUME_AOB_OFFSET: usize = 0x2;
 
+pub const LOCK_ON_MGR_AOB: &str = "A1 ? ? ? ? 33 D2 89 93 40 01 00 00 89";
+pub const LOCK_ON_MGR_AOB_OFFSET: usize = 0x1;
+
+// Freecam injection points (matching Cheat Engine table)
+pub const FREECAM_INJECT_1_AOB: &str = "89 44 24 24 8B 43 44";  // DARKSOULS.exe+B00AD4
+pub const FREECAM_INJECT_2_AOB: &str = "C1 EA 14 F6 C2 01";     // DARKSOULS.exe+BFB431
+
+// Debug/Release RVA mapping for PTDE freecam hooks.
+// Release RVAs are debug RVAs minus 0x41C0.
+pub const FREECAM_DEBUG_TO_RELEASE_DELTA: usize = 0x41C0;
+pub const FREECAM_IMAGE_BASE: usize = 0x0040_0000;
+pub const FREECAM_INJECT_1_DEBUG_RVA: usize = 0x00B0_0AD4;
+pub const FREECAM_INJECT_2_DEBUG_RVA: usize = 0x00BF_B431;
+pub const FREECAM_MOTION_FUNC_DEBUG_RVA: usize = 0x00BF_AE60;
+pub const FREECAM_INJECT_1_RELEASE_RVA: usize = FREECAM_INJECT_1_DEBUG_RVA - FREECAM_DEBUG_TO_RELEASE_DELTA;
+pub const FREECAM_INJECT_2_RELEASE_RVA: usize = FREECAM_INJECT_2_DEBUG_RVA - FREECAM_DEBUG_TO_RELEASE_DELTA;
+pub const FREECAM_MOTION_FUNC_RELEASE_RVA: usize = FREECAM_MOTION_FUNC_DEBUG_RVA - FREECAM_DEBUG_TO_RELEASE_DELTA;
+
+// Camera manager pointer (used for setting freecam mode in camera object)
+pub const FREECAM_CAM_MGR_AOB: &str = "A1 ? ? ? ? 8B 80 EC 00 00 00 3B C6";
+pub const FREECAM_CAM_MGR_AOB_OFFSET: usize = 0x1;
+
+// ChrFollowCam - the actual render camera structure (from DSGadget)
+pub const CHR_FOLLOW_CAM_AOB: &str = "D9 45 08 A1 ? ? ? ? 51 D9 1C 24 50";
+pub const CHR_FOLLOW_CAM_AOB_OFFSET: usize = 0x4;
+
+// Try to find a camera update function by scanning for common prologue patterns
+// Pattern 1: Standard function prologue with stack frame
+pub const CAMERA_UPDATE_FUNC_1_AOB: &str = "55 8B EC 83 EC ? 53 56 57";
+// Pattern 2: Function that takes camera pointer as param
+pub const CAMERA_UPDATE_FUNC_2_AOB: &str = "56 8B 74 24 08 85 F6 74";
+// Pattern 3: Look near our injection point for calls
+pub const CAMERA_UPDATE_FUNC_3_AOB: &str = "8B 43 44 85 C0 0F 9E C1 83 C0 FF";
 
 pub const PHANTOM_TYPE_AOB: &str = "33 ? 83 ? ? 0F 87 ? ? ? ? FF ? ? ? ? ? ? 84 ? 0F 84 ? ? ? ? B8 ? ? ? ? C3";
+
+// Camera follow disable - pattern around the je instruction that skips camera update
+// We'll patch the je (74 70) at offset +5 to jmp (EB 70) to always skip
+pub const CAMERA_FOLLOW_DISABLE_AOB: &str = "80 7C 24 38 00 74 70 F3 0F 7E B4";
+pub const CAMERA_FOLLOW_DISABLE_PATTERN: &[u8] = &[
+    0x80, 0x7C, 0x24, 0x38, 0x00,  // cmp byte ptr [esp+38], 0
+    0x74, 0x70,                     // je +0x70 (THIS is what we patch to EB)
+    0xF3, 0x0F, 0x7E, 0xB4          // movq xmm6, ...
+];
+pub const CAMERA_FOLLOW_DISABLE_PATCH_OFFSET: usize = 0x5; // Offset to the 74 byte
+
+// Camera follow - NOP the camera position write instructions
+// Location 1: Around B04183
+pub const CAMERA_WRITE_1_XY_RVA: usize = 0x00B04183; // 7 bytes - movq2dq [ebx+100],mmx0
+pub const CAMERA_WRITE_1_XY_SIZE: usize = 7;
+pub const CAMERA_WRITE_1_Z_RVA: usize = 0x00B04190; // 8 bytes - movq [eax+108],xmm0
+pub const CAMERA_WRITE_1_Z_SIZE: usize = 8;
+
+// Location 2: Around B0EF77
+pub const CAMERA_WRITE_2_XY_RVA: usize = 0x00B0EF77; // 8 bytes - movq [ebx+100],xmm0
+pub const CAMERA_WRITE_2_XY_SIZE: usize = 8;
+pub const CAMERA_WRITE_2_Z_RVA: usize = 0x00B0EF7F; // 8 bytes - movq [ebx+108],xmm1
+pub const CAMERA_WRITE_2_Z_SIZE: usize = 8;

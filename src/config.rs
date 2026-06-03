@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Config {
@@ -8,6 +8,18 @@ pub struct Config {
     pub colors: ColorScheme,
     #[serde(default)]
     pub window_layout: WindowLayout,
+    #[serde(default)]
+    pub freecam: FreecamSettings,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FreecamSettings {
+    #[serde(default = "default_force_mode2_active_only")]
+    pub force_mode2_active_only: bool,
+}
+
+fn default_force_mode2_active_only() -> bool {
+    true
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -114,19 +126,46 @@ impl ColorRGB {
 }
 
 impl Config {
-    pub fn load_or_default() -> Self {
-        let config_path = "config.toml";
+    fn config_candidates() -> Vec<PathBuf> {
+        let mut paths = Vec::new();
 
-        if Path::new(config_path).exists() {
-            match fs::read_to_string(config_path) {
-                Ok(content) => match toml::from_str(&content) {
-                    Ok(config) => return config,
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                paths.push(dir.join("config.toml"));
+            }
+        }
+
+        // Backward-compatible fallback to current working directory.
+        paths.push(PathBuf::from("config.toml"));
+
+        paths
+    }
+
+    fn preferred_config_path() -> PathBuf {
+        // Always save next to the running executable when available.
+        if let Some(first) = Self::config_candidates().first() {
+            return first.clone();
+        }
+
+        PathBuf::from("config.toml")
+    }
+
+    pub fn load_or_default() -> Self {
+        for config_path in Self::config_candidates() {
+            if Path::new(&config_path).exists() {
+                match fs::read_to_string(&config_path) {
+                    Ok(content) => match toml::from_str(&content) {
+                        Ok(config) => {
+                            eprintln!("Loaded config from {:?}", config_path);
+                            return config;
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to parse {:?}: {}. Trying next location.", config_path, e);
+                        }
+                    },
                     Err(e) => {
-                        eprintln!("Failed to parse config.toml: {}. Using defaults.", e);
+                        eprintln!("Failed to read {:?}: {}. Trying next location.", config_path, e);
                     }
-                },
-                Err(e) => {
-                    eprintln!("Failed to read config.toml: {}. Using defaults.", e);
                 }
             }
         }
@@ -139,7 +178,8 @@ impl Config {
 
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         let toml_string = toml::to_string_pretty(self)?;
-        fs::write("config.toml", toml_string)?;
+        let config_path = Self::preferred_config_path();
+        fs::write(&config_path, toml_string)?;
         Ok(())
     }
 }
@@ -149,6 +189,14 @@ impl Default for WindowLayout {
         WindowLayout {
             main_window: default_main_window(),
             debug_window: default_debug_window(),
+        }
+    }
+}
+
+impl Default for FreecamSettings {
+    fn default() -> Self {
+        Self {
+            force_mode2_active_only: default_force_mode2_active_only(),
         }
     }
 }
@@ -209,6 +257,7 @@ impl Default for Config {
                 },
             },
             window_layout: WindowLayout::default(),
+            freecam: FreecamSettings::default(),
         }
     }
 }

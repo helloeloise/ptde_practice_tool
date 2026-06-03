@@ -228,3 +228,11 @@ impl GameDataMgr {
     pub const DEATH_COUNT: usize = 0x5C;
     pub const PLAY_TIME: usize = 0x68;
 }
+
+pub struct LockOnMgr;
+
+#[allow(dead_code)]
+impl LockOnMgr {
+    pub const DS2_LOCK_ON: usize = 0x1150;
+    pub const FREE_CAM: usize = 0x1151;
+}

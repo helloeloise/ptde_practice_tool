@@ -71,6 +71,8 @@ pub struct DebugInfo {
     curse_resist: i32,
     is_open: bool,
     last_debug_window_save_time: std::time::Instant,
+    freecam_log_save_message: Option<String>,
+    freecam_log_save_time: std::time::Instant,
 }
 
 impl DebugInfo {
@@ -139,6 +141,8 @@ impl DebugInfo {
             curse_resist: 0,
             is_open: false,
             last_debug_window_save_time: std::time::Instant::now(),
+            freecam_log_save_message: None,
+            freecam_log_save_time: std::time::Instant::now(),
         }
     }
 
@@ -341,6 +345,11 @@ impl DebugInfo {
                     debug_window_changed = true;
                 }
 
+                // Wrap content in scrollable child window
+                ui.child_window("debug_content")
+                    .size([0.0, 0.0]) // Take all available space
+                    .build(|| {
+
                 ui.text(format!(
                     "Current Animation ID: {}",
                     self.get_current_anim_id()
@@ -384,6 +393,190 @@ impl DebugInfo {
                     "Disease Resist: {} | Curse Resist: {}",
                     self.disease_resist, self.curse_resist
                 ));
+                ui.separator();
+
+                // Freecam hook status
+                let freecam_status = if ds1.free_cam_enabled {
+                    "[OK] Freecam Hook: Active"
+                } else {
+                    "Freecam Hook: Inactive"
+                };
+                let freecam_color = if ds1.free_cam_enabled {
+                    [0.0, 1.0, 0.0, 1.0] // Green
+                } else {
+                    [0.7, 0.7, 0.7, 1.0] // Gray
+                };
+                let _freecam_style = ui.push_style_color(imgui::StyleColor::Text, freecam_color);
+                ui.text(freecam_status);
+                drop(_freecam_style);
+
+                // Freecam injection diagnostics - always show to help debug why checkbox unchecks
+                let (injection_ok, addr1_valid, addr2_valid, found_addr1, found_addr2, pending, retry_count) = ds1.get_freecam_injection_info();
+                let inject_color = if injection_ok {
+                    [0.0, 1.0, 0.0, 1.0] // Green
+                } else if pending {
+                    [1.0, 1.0, 0.0, 1.0] // Yellow - pending
+                } else {
+                    [1.0, 0.0, 0.0, 1.0] // Red - failed
+                };
+                let _inject_style = ui.push_style_color(imgui::StyleColor::Text, inject_color);
+                if pending {
+                    ui.text(format!("Injection: Waiting for game... (retry {})", retry_count / 60));
+                } else {
+                    ui.text(format!("Injection Success: {}", injection_ok));
+                }
+                ui.text(format!("Addr1 (0x{:08X}) Valid: {}", 0x00EFD4A4, addr1_valid));
+                ui.text(format!("Addr2 (0x{:08X}) Valid: {}", 0x00FF8224, addr2_valid));
+                drop(_inject_style);
+                
+                // Show expected vs found bytes if validation failed
+                if !addr1_valid {
+                    ui.text(format!("  Expected: {:02X?}", &[0x89, 0x44, 0x24, 0x24, 0x8B, 0x43, 0x44]));
+                    ui.text(format!("  Found:    {:02X?}", found_addr1));
+                }
+                if !addr2_valid {
+                    ui.text(format!("  Expected: {:02X?}", &[0xC1, 0xEA, 0x14, 0xF6, 0xC2, 0x01]));
+                    ui.text(format!("  Found:    {:02X?}", found_addr2));
+                }
+                
+                // Show hint if pending
+                if pending {
+                    let _hint_style = ui.push_style_color(imgui::StyleColor::Text, [0.7, 0.7, 0.7, 1.0]);
+                    ui.text_wrapped("Waiting for game to load... Load a save or start a new game.");
+                    drop(_hint_style);
+                }
+                
+                // Add scan button to find correct addresses
+                if !injection_ok && !pending {
+                    ui.text(""); // Spacing
+                    if ui.small_button("Scan Memory for Patterns") {
+                        match ds1.scan_for_freecam_patterns() {
+                            Ok(results) => {
+                                self.freecam_log_save_message = Some(format!("Scan: {}", results));
+                                self.freecam_log_save_time = std::time::Instant::now();
+                            }
+                            Err(e) => {
+                                self.freecam_log_save_message = Some(format!("Scan Error: {}", e));
+                                self.freecam_log_save_time = std::time::Instant::now();
+                            }
+                        }
+                    }
+                    ui.text_wrapped("Click to scan memory for correct addresses");
+                    
+                    // Display scan results
+                    if let Some(ref msg) = self.freecam_log_save_message {
+                        if msg.starts_with("Scan:") && self.freecam_log_save_time.elapsed().as_secs() < 10 {
+                            let _msg_style = ui.push_style_color(imgui::StyleColor::Text, [1.0, 1.0, 0.0, 1.0]);
+                            ui.text_wrapped(msg);
+                            drop(_msg_style);
+                        } else if msg.starts_with("Scan Error:") && self.freecam_log_save_time.elapsed().as_secs() < 5 {
+                            let _msg_style = ui.push_style_color(imgui::StyleColor::Text, [1.0, 0.0, 0.0, 1.0]);
+                            ui.text_wrapped(msg);
+                            drop(_msg_style);
+                        }
+                    }
+                }
+
+                // Freecam debug logging
+                if ds1.free_cam_enabled {
+                    let (mode, injection_success, inject_addr1, inject_addr2, cam_mgr_ptr) = ds1.get_freecam_log_stats();
+                    ui.text(format!("Freecam Mode: {}", mode));
+                    ui.text(format!("Injection Success: {}", injection_success));
+                    ui.text(format!("Inject Addr 1: 0x{:08X}", inject_addr1));
+                    ui.text(format!("Inject Addr 2: 0x{:08X}", inject_addr2));
+                    ui.text(format!("Cam Mgr Ptr Addr: 0x{:08X}", cam_mgr_ptr));
+                    
+                    ui.separator();
+                    ui.text("Memory Values:");
+                    let (cam_mgr_value, cam_obj_value, cam_mode_value) = ds1.get_freecam_camera_values();
+                    ui.text(format!("Camera Manager: 0x{:08X}", cam_mgr_value));
+                    ui.text(format!("Camera Object: 0x{:08X}", cam_obj_value));
+                    ui.text(format!("Mode in Memory: {}", cam_mode_value));
+                    
+                    ui.separator();
+                    ui.text("Debug Info:");
+                    let (func_addr, cam_obj_dbg, call_count, hook_entry) = ds1.get_freecam_debug_values();
+                    ui.text(format!("Function Addr: 0x{:08X}", func_addr));
+                    ui.text(format!("Camera Obj (dbg): 0x{:08X}", cam_obj_dbg));
+                    ui.text(format!("Motion Call Count: {}", call_count));
+                    ui.text(format!("Hook Entry Count: {} times", hook_entry));
+                    let (manual_ticks, manual_writes, mdx, mdy, mdz, last_addr) =
+                        ds1.get_freecam_manual_debug_values();
+                    ui.text(format!("Manual Move Ticks: {}", manual_ticks));
+                    ui.text(format!("Manual Move Writes: {}", manual_writes));
+                    ui.text(format!("Manual Delta XYZ: {:.5} / {:.5} / {:.5}", mdx, mdy, mdz));
+                    ui.text(format!("Manual Last Write Addr: 0x{:08X}", last_addr));
+                    
+                    // Display motion function info
+                    ui.separator();
+                    ui.text("Memory Scan (code after injection +0x20):");
+                    let (scan_addr, func_bytes) = ds1.get_freecam_motion_func_bytes();
+                    ui.text(format!("Scan Addr: 0x{:08X}", scan_addr));
+                    if !func_bytes.is_empty() {
+                        // Display in rows of 16 bytes
+                        for (i, chunk) in func_bytes.chunks(16).enumerate() {
+                            let offset = i * 16;
+                            let bytes_str = chunk.iter()
+                                .map(|b| format!("{:02X}", b))
+                                .collect::<Vec<_>>()
+                                .join(" ");
+                            ui.text(format!("+{:02X}: {}", offset, bytes_str));
+                        }
+                    }
+                    
+                    // Camera sampling removed in new implementation
+                    ui.separator();
+                    ui.text("Note: Simplified implementation.");
+                    ui.text("Press L3+R3 to cycle modes (0=Normal, 1=Conditional, 2=Free, 3=Reverse).");
+                    
+                    if ui.small_button("Save Status to File") {
+                        match ds1.save_freecam_log_to_file() {
+                            Ok(filename) => {
+                                self.freecam_log_save_message = Some(format!("Saved: {}", filename));
+                                self.freecam_log_save_time = std::time::Instant::now();
+                            }
+                            Err(e) => {
+                                self.freecam_log_save_message = Some(format!("Error: {}", e));
+                                self.freecam_log_save_time = std::time::Instant::now();
+                            }
+                        }
+                    }
+                    
+                    // Display save message for 3 seconds
+                    if let Some(ref msg) = self.freecam_log_save_message {
+                        if self.freecam_log_save_time.elapsed().as_secs() < 3 {
+                            let color = if msg.starts_with("Saved:") {
+                                [0.0, 1.0, 0.0, 1.0] // Green for success
+                            } else {
+                                [1.0, 0.0, 0.0, 1.0] // Red for error
+                            };
+                            let _msg_style = ui.push_style_color(imgui::StyleColor::Text, color);
+                            ui.text(msg);
+                            drop(_msg_style);
+                        } else {
+                            self.freecam_log_save_message = None;
+                        }
+                    }
+                }
+
+                if ds1.free_cam_enabled {
+                    // Show L3+R3 debug bits
+                    let (hook_raw_8, hook_raw_c) = ds1.get_freecam_input_hook_values();
+                    let (_pad, buttons, _lx, _ly, _rx, _ry, _lt, _rt) = ds1.get_freecam_xinput_debug_values();
+                    let l3_xinput = (buttons & 0x0040) != 0;
+                    let r3_xinput = (buttons & 0x0080) != 0;
+                    ui.text(format!("XInput L3 Bit: {}", if l3_xinput { 1 } else { 0 }));
+                    ui.text(format!("XInput R3 Bit: {}", if r3_xinput { 1 } else { 0 }));
+                    ui.text(format!("Hook raw [esi+0x8] (legacy): 0x{:08X}", hook_raw_8));
+                    ui.text(format!("Hook raw [esi+0xC] (legacy): 0x{:08X}", hook_raw_c));
+
+                    // Show ESI and raw input values for L3+R3 debug
+                    let (esi_val, l3_raw, r3_raw) = ds1.get_freecam_input_debug();
+                    ui.text(format!("ESI (input struct): 0x{:08X}", esi_val));
+                    ui.text(format!("[esi+0x8]:  0x{:08X}", l3_raw));
+                    ui.text(format!("[esi+0xC]: 0x{:08X}", r3_raw));
+                }
+
                 ui.separator();
 
                 if ui.collapsing_header("Equipment", imgui::TreeNodeFlags::empty()) {
@@ -845,6 +1038,8 @@ impl DebugInfo {
                         }
                     }
                 }
+
+                }); // End of scrollable child window
 
             });
 

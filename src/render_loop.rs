@@ -53,6 +53,7 @@ pub struct RenderLoop {
     disable_events: bool,
     auto_save_disabled: bool,
     offline_mode: bool,
+    free_cam: bool,
     stored_positions: [Option<(f32, f32, f32, f32, i32)>; 3],
     input_was_disabled: bool,
     show_console: bool,
@@ -122,6 +123,7 @@ impl RenderLoop {
             disable_events: false,
             auto_save_disabled: false,
             offline_mode: false,
+            free_cam: false,
             stored_positions: [None; 3],
             input_was_disabled: false,
             show_console: false,
@@ -187,12 +189,23 @@ impl ImguiRenderLoop for RenderLoop {
         let instance = get_ds1_instance();
         let mut ds1 = instance.lock().unwrap();
 
+        // Apply freecam behavior toggle from config to runtime hook state.
+        {
+            let config = self.config.lock().unwrap();
+            ds1.set_freecam_force_mode2_active_only(config.freecam.force_mode2_active_only);
+        }
+
         // Periodically refresh process handle to prevent it from going stale.
         // Folded into the main lock to avoid acquiring the mutex twice per frame.
         if self.last_process_refresh_time.elapsed().as_secs() >= 30 {
             let _ = ds1.process.refresh();
             self.last_process_refresh_time = std::time::Instant::now();
         }
+
+        // Try pending freecam injection (waits for game code to load)
+        ds1.try_pending_freecam_injection();
+        ds1.tick_freecam_mode_hotkey();
+        ds1.tick_freecam_manual_movement();
 
         // Check if user is interacting with any UI or if menu is open
         let io = ui.io();
@@ -629,6 +642,7 @@ impl ImguiRenderLoop for RenderLoop {
                     ds1.set_disable_events_to(false);
                     ds1.set_auto_save_to(true);
                     ds1.set_online_mode_to(true);
+                    ds1.set_free_cam_to(false);
                     
                     println!("Memory cleanup complete. Ejecting...");
                     self.tas_runner.stop();
@@ -805,6 +819,11 @@ impl ImguiRenderLoop for RenderLoop {
 
                     if ui.checkbox("offline mode", &mut self.offline_mode) {
                         ds1.set_online_mode_to(!self.offline_mode);
+                    }
+
+                    if ui.checkbox("free cam", &mut self.free_cam) {
+                        ds1.set_free_cam_to(self.free_cam);
+                        self.free_cam = ds1.get_free_cam();
                     }
                 }
 
@@ -1345,7 +1364,8 @@ impl RenderLoop {
             || self.disable_enemies
             || self.disable_events
             || self.auto_save_disabled
-            || self.offline_mode;
+            || self.offline_mode
+            || self.free_cam;
 
         if !any_flag_enabled || self.last_flag_sync_time.elapsed().as_secs() < 3 {
             return;
@@ -1414,6 +1434,10 @@ impl RenderLoop {
         }
         if self.offline_mode {
             ds1.set_online_mode_to(false);
+        }
+        if self.free_cam {
+            ds1.set_free_cam_to(true);
+            self.free_cam = ds1.get_free_cam();
         }
         self.last_flag_sync_time = std::time::Instant::now();
     }
