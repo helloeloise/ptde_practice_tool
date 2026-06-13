@@ -9,6 +9,7 @@ impl RenderLoop {
         // Only sync flags every 3 seconds and only if at least one flag is enabled.
         let any_flag_enabled = self.no_stamina_consume
             || self.infinite_stamina
+            || self.freeze_poise
             || self.infinite_magic
             || self.infinite_goods
             || self.player_hide
@@ -43,6 +44,9 @@ impl RenderLoop {
             let max_stamina = ds1.chr_data_1.read_i32_rel(Some(CharData1::MAX_STAMINA));
             ds1.chr_data_1
                 .write_i32_rel(Some(CharData1::STAMINA), max_stamina.max(0));
+        }
+        if self.freeze_poise {
+            ds1.set_freeze_poise_to(true);
         }
         if self.infinite_magic {
             ds1.set_all_no_magic_quantity_consume_to(true);

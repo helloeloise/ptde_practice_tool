@@ -97,6 +97,18 @@ impl Ds1 {
         );
     }
 
+    pub fn set_freeze_poise_to(&mut self, value: bool) {
+        if !value {
+            return;
+        }
+
+        let max_poise = self.chr_data_1.read_f32_rel(Some(CharData1::MAX_POISE));
+        if max_poise.is_finite() {
+            self.chr_data_1
+                .write_f32_rel(Some(CharData1::CURRENT_POISE), max_poise.max(0.0));
+        }
+    }
+
     pub fn set_no_update_ai(&mut self) -> bool {
         let no_update_ai = self.get_no_update_ai();
         if !no_update_ai {

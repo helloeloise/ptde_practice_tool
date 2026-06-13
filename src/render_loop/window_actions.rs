@@ -20,6 +20,7 @@ impl RenderLoop {
 
         // Disable all debug flags.
         ds1.set_no_stam_consume_to(false);
+        ds1.set_freeze_poise_to(false);
         ds1.set_all_no_magic_quantity_consume_to(false);
         ds1.set_no_goods_consume_to(false);
         ds1.set_player_hide_to(false);

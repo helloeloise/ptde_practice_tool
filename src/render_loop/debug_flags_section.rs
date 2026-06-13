@@ -22,6 +22,10 @@ impl RenderLoop {
         ui.same_line();
         ui.checkbox("infinite stamina", &mut self.infinite_stamina);
 
+        if ui.checkbox("freeze poise", &mut self.freeze_poise) {
+            ds1.set_freeze_poise_to(self.freeze_poise);
+        }
+
         if ui.checkbox("infinite magic", &mut self.infinite_magic) {
             ds1.set_all_no_magic_quantity_consume();
         }

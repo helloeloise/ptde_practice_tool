@@ -116,12 +116,18 @@ where
     Some(std::mem::transmute_copy(&addr))
 }
 
-fn chainload_folder() -> PathBuf {
-    let exe_dir = std::env::current_exe()
+fn exe_dir() -> PathBuf {
+    std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-        .unwrap_or_else(|| PathBuf::from("."));
-    exe_dir.join("dinput8_chainload")
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn is_steam_dll(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with("steam")
+        || lower == "csteamworks.dll"
+        || lower == "sdkencryptedappticket.dll"
 }
 
 fn apply_patch_if_match(addr: usize, orig: &[u8], patch: &[u8]) -> bool {
@@ -179,7 +185,7 @@ fn chainload_other_dlls_once() {
     CHAINLOAD_ONCE.call_once(|| {
         apply_no_logo_patches_once();
 
-        let dir = chainload_folder();
+        let dir = exe_dir();
         let entries = match std::fs::read_dir(&dir) {
             Ok(v) => v,
             Err(_) => return,
@@ -188,6 +194,11 @@ fn chainload_other_dlls_once() {
         let mut dlls = Vec::new();
         for entry in entries.flatten() {
             let path = entry.path();
+            let file_name = match path.file_name().and_then(|s| s.to_str()) {
+                Some(n) => n.to_owned(),
+                None => continue,
+            };
+
             let is_dll = path
                 .extension()
                 .and_then(|s| s.to_str())
@@ -197,12 +208,11 @@ fn chainload_other_dlls_once() {
                 continue;
             }
 
-            let is_self_name = path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .map(|s| s.eq_ignore_ascii_case("dinput8.dll"))
-                .unwrap_or(false);
-            if is_self_name {
+            if file_name.eq_ignore_ascii_case("dinput8.dll") {
+                continue;
+            }
+
+            if is_steam_dll(&file_name) {
                 continue;
             }
 
