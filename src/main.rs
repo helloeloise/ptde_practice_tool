@@ -7,9 +7,11 @@ fn candidate_dll_paths(exe_path: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
 
     if let Some(dir) = exe_path.parent() {
+        out.push(dir.join("dinput8.dll"));
         out.push(dir.join("hello_hud.dll"));
 
         if let Some(parent) = dir.parent() {
+            out.push(parent.join("dinput8.dll"));
             out.push(parent.join("hello_hud.dll"));
         }
     }
@@ -82,7 +84,7 @@ fn main() {
     let cur_dll = match resolved_dll {
         Some(p) => p,
         None => {
-            eprintln!("Could not find hello_hud.dll near injector executable.");
+            eprintln!("Could not find dinput8.dll or hello_hud.dll near injector executable.");
             eprintln!("Injector path: {:?}", exe_path);
             for p in candidate_dll_paths(&exe_path) {
                 eprintln!("Tried: {:?}", p);

@@ -11,6 +11,8 @@ use hudhook::*;
 #[cfg(windows)]
 mod config;
 #[cfg(windows)]
+mod dinput8_proxy;
+#[cfg(windows)]
 mod memory;
 #[cfg(windows)]
 mod render_loop;

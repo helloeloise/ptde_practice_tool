@@ -348,6 +348,7 @@ impl DebugInfo {
                 // Wrap content in scrollable child window
                 ui.child_window("debug_content")
                     .size([0.0, 0.0]) // Take all available space
+                    .border(false)
                     .build(|| {
 
                 ui.text(format!(
@@ -1037,6 +1038,276 @@ impl DebugInfo {
                             );
                         }
                     }
+                }
+
+                // XInput Hook & Injection section
+                ui.separator();
+                if ui.collapsing_header("XInput Input & Injection", imgui::TreeNodeFlags::empty()) {
+                    ui.text("Hooks XInputGetState at Windows API level");
+                    ui.text("Shows real-time button state + allows injection");
+                    
+                    ui.separator();
+                    static mut XINPUT_HOOK_ENABLED: bool = false;
+                    unsafe {
+                        if ui.checkbox("Enable XInput Hook", &mut XINPUT_HOOK_ENABLED) {
+                            if XINPUT_HOOK_ENABLED {
+                                if ds1.enable_xinput_hook() {
+                                    println!("[UI] XInput hook enabled successfully");
+                                } else {
+                                    println!("[UI] Failed to enable XInput hook");
+                                    XINPUT_HOOK_ENABLED = false;
+                                }
+                            } else {
+                                ds1.disable_xinput_hook();
+                                println!("[UI] XInput hook disabled");
+                            }
+                        }
+                        
+                        if XINPUT_HOOK_ENABLED {
+                            ui.text_colored([0.0, 1.0, 0.0, 1.0], "✓ Hook Active");
+                            
+                            // Display call count for diagnostics
+                            let call_count = ds1.get_xinput_call_count();
+                            let user_index = ds1.get_xinput_last_user_index();
+                            ui.text(format!("XInputGetState calls: {} (controller #{})", call_count, 
+                                if user_index == 0xFF { "none".to_string() } else { user_index.to_string() }));
+                            if call_count == 0 {
+                                ui.text_colored([1.0, 0.5, 0.0, 1.0], "(Hook not being called - game may use DirectInput)");
+                            } else {
+                                ui.text_colored([0.0, 1.0, 0.0, 1.0], "(Hook is active and being called)");
+                            }
+                            
+                            // Display current button state
+                            ui.separator();
+                            ui.text("Current Buttons Pressed:");
+                            let buttons = ds1.get_xinput_buttons();
+                            
+                            if buttons == 0 {
+                                ui.text("  (none)");
+                            } else {
+                                // Face buttons
+                                if (buttons & 0x1000) != 0 { ui.text("  ✓ A"); }
+                                if (buttons & 0x2000) != 0 { ui.text("  ✓ B"); }
+                                if (buttons & 0x4000) != 0 { ui.text("  ✓ X"); }
+                                if (buttons & 0x8000) != 0 { ui.text("  ✓ Y"); }
+                                
+                                // D-pad
+                                if (buttons & 0x0001) != 0 { ui.text("  ✓ D-Up"); }
+                                if (buttons & 0x0002) != 0 { ui.text("  ✓ D-Down"); }
+                                if (buttons & 0x0004) != 0 { ui.text("  ✓ D-Left"); }
+                                if (buttons & 0x0008) != 0 { ui.text("  ✓ D-Right"); }
+                                
+                                // Shoulders
+                                if (buttons & 0x0100) != 0 { ui.text("  ✓ LB"); }
+                                if (buttons & 0x0200) != 0 { ui.text("  ✓ RB"); }
+                                
+                                // Thumbsticks
+                                if (buttons & 0x0040) != 0 { ui.text("  ✓ L3"); }
+                                if (buttons & 0x0080) != 0 { ui.text("  ✓ R3"); }
+                                
+                                // Start/Back
+                                if (buttons & 0x0010) != 0 { ui.text("  ✓ Start"); }
+                                if (buttons & 0x0020) != 0 { ui.text("  ✓ Back"); }
+                                
+                                ui.text(format!("Raw: 0x{:04X}", buttons));
+                            }
+                            
+                            // Display analog values (always show when hook is active)
+                            ui.separator();
+                            ui.text("Analog Values (Current):");
+                            let (lt, rt) = ds1.get_xinput_triggers();
+                            let (lx, ly) = ds1.get_xinput_left_stick();
+                            let (rx, ry) = ds1.get_xinput_right_stick();
+                            
+                            ui.text(format!("Triggers: LT={} RT={}", lt, rt));
+                            ui.text(format!("Left Stick: X={} Y={}", lx, ly));
+                            ui.text(format!("Right Stick: X={} Y={}", rx, ry));
+                            
+                            ui.separator();
+                            ui.text("Button Injection:");
+                            
+                            static mut XINPUT_INJECT_ENABLED: bool = false;
+                            if ui.checkbox("Enable Injection", &mut XINPUT_INJECT_ENABLED) {
+                                ds1.set_xinput_injection(XINPUT_INJECT_ENABLED);
+                            }
+                            
+                            if XINPUT_INJECT_ENABLED {
+                                ui.text_colored([0.0, 1.0, 0.0, 1.0], "Injection Active");
+                                
+                                ui.text("Button Injection:");
+                                if ui.button("Inject A Button") {
+                                    ds1.inject_xinput_buttons(0x1000);
+                                    println!("[XINPUT] Injecting A button");
+                                }
+                                ui.same_line();
+                                if ui.button("Inject B") {
+                                    ds1.inject_xinput_buttons(0x2000);
+                                }
+                                ui.same_line();
+                                if ui.button("Clear") {
+                                    ds1.inject_xinput_buttons(0);
+                                }
+                                
+                                ui.text("Quick Inject:");
+                                if ui.button("X") { ds1.inject_xinput_buttons(0x4000); }
+                                ui.same_line();
+                                if ui.button("Y") { ds1.inject_xinput_buttons(0x8000); }
+                                ui.same_line();
+                                if ui.button("LB") { ds1.inject_xinput_buttons(0x0100); }
+                                ui.same_line();
+                                if ui.button("RB") { ds1.inject_xinput_buttons(0x0200); }
+                                
+                                ui.text("Button Reference:");
+                                ui.text("  A=0x1000 B=0x2000 X=0x4000 Y=0x8000");
+                                ui.text("  D-Up=0x0001 D-Down=0x0002 D-Left=0x0004 D-Right=0x0008");
+                                ui.text("  LB=0x0100 RB=0x0200 Start=0x0010 Back=0x0020");
+                                
+                                // Analog controls injection
+                                ui.separator();
+                                ui.text("Analog Injection:");
+                                
+                                // Trigger injection
+                                static mut INJECT_LT: i32 = 0;
+                                static mut INJECT_RT: i32 = 0;
+                                ui.text("Inject Triggers (0-255):");
+                                if ui.slider("Left Trigger##inject", 0, 255, &mut INJECT_LT) {
+                                    ds1.inject_xinput_triggers(INJECT_LT as u8, INJECT_RT as u8);
+                                }
+                                if ui.slider("Right Trigger##inject", 0, 255, &mut INJECT_RT) {
+                                    ds1.inject_xinput_triggers(INJECT_LT as u8, INJECT_RT as u8);
+                                }
+                                
+                                // Left stick injection
+                                static mut INJECT_LX: i32 = 0;
+                                static mut INJECT_LY: i32 = 0;
+                                ui.text("Inject Left Stick (-32768 to 32767):");
+                                if ui.slider("Left X##inject", -32768, 32767, &mut INJECT_LX) {
+                                    ds1.inject_xinput_left_stick(INJECT_LX as i16, INJECT_LY as i16);
+                                }
+                                if ui.slider("Left Y##inject", -32768, 32767, &mut INJECT_LY) {
+                                    ds1.inject_xinput_left_stick(INJECT_LX as i16, INJECT_LY as i16);
+                                }
+                                
+                                // Right stick injection
+                                static mut INJECT_RX: i32 = 0;
+                                static mut INJECT_RY: i32 = 0;
+                                ui.text("Inject Right Stick (-32768 to 32767):");
+                                if ui.slider("Right X##inject", -32768, 32767, &mut INJECT_RX) {
+                                    ds1.inject_xinput_right_stick(INJECT_RX as i16, INJECT_RY as i16);
+                                }
+                                if ui.slider("Right Y##inject", -32768, 32767, &mut INJECT_RY) {
+                                    ds1.inject_xinput_right_stick(INJECT_RX as i16, INJECT_RY as i16);
+                                }
+                                
+                                if ui.button("Clear All Analog") {
+                                    INJECT_LT = 0;
+                                    INJECT_RT = 0;
+                                    INJECT_LX = 0;
+                                    INJECT_LY = 0;
+                                    INJECT_RX = 0;
+                                    INJECT_RY = 0;
+                                    ds1.inject_xinput_triggers(0, 0);
+                                    ds1.inject_xinput_left_stick(0, 0);
+                                    ds1.inject_xinput_right_stick(0, 0);
+                                }
+                            }
+                        } else {
+                            ui.text("Enable hook to see button state and inject");
+                        }
+                    }
+                }
+
+                // Keyboard Input Display (using ImGui's native input system)
+                ui.separator();
+                if ui.collapsing_header("Keyboard Input (ImGui)", imgui::TreeNodeFlags::empty()) {
+                    ui.text("Shows keys detected by ImGui's input system");
+                    ui.text("(Same system used for tool keybinds)");
+                    
+                    ui.separator();
+                    ui.text("Currently Pressed Keys:");
+                    
+                    let mut any_key_pressed = false;
+                    
+                    // Check letter keys
+                    let letters = [
+                        ('A', imgui::Key::A), ('B', imgui::Key::B), ('C', imgui::Key::C), ('D', imgui::Key::D),
+                        ('E', imgui::Key::E), ('F', imgui::Key::F), ('G', imgui::Key::G), ('H', imgui::Key::H),
+                        ('I', imgui::Key::I), ('J', imgui::Key::J), ('K', imgui::Key::K), ('L', imgui::Key::L),
+                        ('M', imgui::Key::M), ('N', imgui::Key::N), ('O', imgui::Key::O), ('P', imgui::Key::P),
+                        ('Q', imgui::Key::Q), ('R', imgui::Key::R), ('S', imgui::Key::S), ('T', imgui::Key::T),
+                        ('U', imgui::Key::U), ('V', imgui::Key::V), ('W', imgui::Key::W), ('X', imgui::Key::X),
+                        ('Y', imgui::Key::Y), ('Z', imgui::Key::Z),
+                    ];
+                    
+                    for (name, key) in &letters {
+                        if ui.is_key_down(*key) {
+                            ui.text(format!("  ✓ {}", name));
+                            any_key_pressed = true;
+                        }
+                    }
+                    
+                    // Check number keys
+                    let numbers = [
+                        ('0', imgui::Key::Alpha0), ('1', imgui::Key::Alpha1), ('2', imgui::Key::Alpha2),
+                        ('3', imgui::Key::Alpha3), ('4', imgui::Key::Alpha4), ('5', imgui::Key::Alpha5),
+                        ('6', imgui::Key::Alpha6), ('7', imgui::Key::Alpha7), ('8', imgui::Key::Alpha8),
+                        ('9', imgui::Key::Alpha9),
+                    ];
+                    
+                    for (name, key) in &numbers {
+                        if ui.is_key_down(*key) {
+                            ui.text(format!("  ✓ {}", name));
+                            any_key_pressed = true;
+                        }
+                    }
+                    
+                    // Check modifier and special keys
+                    let special_keys = [
+                        ("Space", imgui::Key::Space),
+                        ("Enter", imgui::Key::Enter),
+                        ("Escape", imgui::Key::Escape),
+                        ("Tab", imgui::Key::Tab),
+                        ("Backspace", imgui::Key::Backspace),
+                        ("Left Shift", imgui::Key::LeftShift),
+                        ("Right Shift", imgui::Key::RightShift),
+                        ("Left Ctrl", imgui::Key::LeftCtrl),
+                        ("Right Ctrl", imgui::Key::RightCtrl),
+                        ("Left Alt", imgui::Key::LeftAlt),
+                        ("Right Alt", imgui::Key::RightAlt),
+                        ("Up Arrow", imgui::Key::UpArrow),
+                        ("Down Arrow", imgui::Key::DownArrow),
+                        ("Left Arrow", imgui::Key::LeftArrow),
+                        ("Right Arrow", imgui::Key::RightArrow),
+                    ];
+                    
+                    for (name, key) in &special_keys {
+                        if ui.is_key_down(*key) {
+                            ui.text(format!("  ✓ {}", name));
+                            any_key_pressed = true;
+                        }
+                    }
+                    
+                    // Check F-keys
+                    let f_keys = [
+                        ("F1", imgui::Key::F1), ("F2", imgui::Key::F2), ("F3", imgui::Key::F3),
+                        ("F4", imgui::Key::F4), ("F5", imgui::Key::F5), ("F6", imgui::Key::F6),
+                        ("F7", imgui::Key::F7), ("F8", imgui::Key::F8), ("F9", imgui::Key::F9),
+                        ("F10", imgui::Key::F10), ("F11", imgui::Key::F11), ("F12", imgui::Key::F12),
+                    ];
+                    
+                    for (name, key) in &f_keys {
+                        if ui.is_key_down(*key) {
+                            ui.text(format!("  ✓ {}", name));
+                            any_key_pressed = true;
+                        }
+                    }
+                    
+                    if !any_key_pressed {
+                        ui.text("  (none)");
+                    }
+                    
+                    ui.separator();
+                    ui.text_colored([0.7, 0.7, 0.7, 1.0], "Note: This uses the same input system as tool keybinds");
                 }
 
                 }); // End of scrollable child window

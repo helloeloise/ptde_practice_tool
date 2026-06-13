@@ -6,15 +6,19 @@ use mem_rs::prelude::*;
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 use std::ffi::c_void;
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
+use std::sync::OnceLock;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
 use windows_sys::Win32::System::Memory::{
     MEM_COMMIT, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE, PAGE_EXECUTE_READ,
     PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, PAGE_GUARD, PAGE_NOACCESS, PAGE_READWRITE,
-    PAGE_WRITECOPY, VirtualProtect, VirtualQuery,
+    PAGE_WRITECOPY, VirtualProtect, VirtualQuery, VirtualAlloc, VirtualFree, MEM_RESERVE,
 };
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA};
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 use windows_sys::Win32::UI::Input::XboxController::{
     XINPUT_GAMEPAD_LEFT_SHOULDER, XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_SHOULDER,
-    XINPUT_GAMEPAD_RIGHT_THUMB, XINPUT_STATE, XInputGetState,
+    XINPUT_GAMEPAD_RIGHT_THUMB, XINPUT_GAMEPAD_A, XINPUT_STATE,
 };
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
@@ -28,6 +32,8 @@ use std::io::Write;
 const FREECAM_ORIG_PATCH_1: [u8; 7] = [0x89, 0x44, 0x24, 0x24, 0x8B, 0x43, 0x44];
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 const FREECAM_ORIG_PATCH_2: [u8; 6] = [0xC1, 0xEA, 0x14, 0xF6, 0xC2, 0x01];
+
+
 
 // Freecam: Dynamically scanned addresses (stored as statics for naked asm access)
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
@@ -98,7 +104,7 @@ static mut FREECAM_DEBUG_MANUAL_WRITES: u32 = 0;
 static mut FREECAM_CAMERA_FOLLOW_DISABLED: bool = false;
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 static mut FREECAM_DEBUG_MANUAL_AXES_X: f32 = 0.0;
-#[cfg(all(target_os = "windows", target_arch = "x86"))]
+
 static mut FREECAM_DEBUG_MANUAL_AXES_Y: f32 = 0.0;
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 static mut FREECAM_DEBUG_MANUAL_AXES_Z: f32 = 0.0;
@@ -175,6 +181,57 @@ static mut FREECAM_DEBUG_HOOK_POST_40: f32 = 0.0;
 static mut FREECAM_DEBUG_HOOK_POST_44: f32 = 0.0;
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 static mut FREECAM_DEBUG_HOOK_POST_48: f32 = 0.0;
+
+// XInput Hook System: Manual inline hook for XInputGetState
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_HOOK_ENABLED: bool = false;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_HOOK_ADDR: usize = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_ORIG_BYTES: [u8; 7] = [0; 7];
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_TRAMPOLINE: usize = 0;  // Address of trampoline to call original
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_BUTTONS: u16 = 0;  // Buttons to inject (XINPUT_GAMEPAD_* flags)
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_ENABLED: u8 = 0;  // Whether injection is enabled
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_BUTTONS: u16 = 0;  // Current buttons state (for display)
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CALL_COUNT: u32 = 0;  // Number of times XInputGetState was called
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_LAST_USER_INDEX: u32 = 0xFF;  // Last controller index polled
+
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+type XInputGetStateFn = unsafe extern "system" fn(u32, *mut XINPUT_STATE) -> u32;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static XINPUT_GET_STATE_FN: OnceLock<Option<XInputGetStateFn>> = OnceLock::new();
+
+// Joystick and trigger values for injection and reading
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_LEFT_TRIGGER: u8 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_RIGHT_TRIGGER: u8 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_THUMB_LX: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_THUMB_LY: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_THUMB_RX: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_INJECT_THUMB_RY: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_LEFT_TRIGGER: u8 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_RIGHT_TRIGGER: u8 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_THUMB_LX: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_THUMB_LY: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_THUMB_RX: i16 = 0;
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+static mut XINPUT_CURRENT_THUMB_RY: i16 = 0;
 
 // Freecam: Storage buffer for transform data (256 bytes, naturally aligned)
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
@@ -508,6 +565,165 @@ unsafe extern "C" fn freecam_hook_2() {
     );
 }
 
+// ============================================================================
+// INPUT CAPTURE/INJECTION SYSTEM - Separate from freecam
+// ============================================================================
+
+// XInput hook: Intercepts XInputGetState to inject button inputs
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+#[unsafe(naked)]
+unsafe extern "system" fn xinput_hook() {
+    std::arch::naked_asm!(
+        // This is a stdcall function with signature: DWORD XInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState)
+        // Parameters: [esp+4] = user_index, [esp+8] = state pointer
+        // We must preserve all registers and return with ret 8
+        
+        "pushad",  // Save all registers
+        
+        // Check if hook is still enabled (might be disabled during unhook)
+        "cmp byte ptr [{hook_enabled}], 0",
+        "je unhook_in_progress",
+        
+        // Increment call counter for diagnostics
+        "inc dword ptr [{call_count}]",
+        
+        // Store user index for diagnostics
+        "mov eax, dword ptr [esp+36]",  // user_index before any pushes
+        "mov dword ptr [{last_user_index}], eax",
+        
+        // Call original via trampoline
+        "mov eax, dword ptr [{trampoline}]",
+        "test eax, eax",
+        "jz error_no_trampoline",
+        
+        // Push params for trampoline call (stdcall: right-to-left)
+        "mov ecx, dword ptr [esp+40]",  // state pointer (esp+32 from pushad + 8 from params)
+        "push ecx",
+        "mov ecx, dword ptr [esp+40]",  // user_index (esp+32 from pushad + 4 from param, +4 from previous push)
+        "push ecx",
+        "call eax",  // Call trampoline (stdcall, it cleans stack)
+        
+        // eax now has result
+        "mov dword ptr [esp+28], eax",  // Store result in saved EAX position
+        
+        // Track current button state (even if not injecting)
+        "test eax, eax",  // Check if call succeeded (0 = success)
+        "jnz skip_track",
+        
+        "mov ecx, dword ptr [esp+40]",  // state pointer
+        "test ecx, ecx",
+        "jz skip_track",
+        
+        // Read current buttons and analog values from state
+        "movzx edx, word ptr [ecx+4]",  // state->Gamepad.wButtons
+        "mov word ptr [{current_buttons}], dx",
+        "movzx edx, byte ptr [ecx+6]",  // state->Gamepad.bLeftTrigger
+        "mov byte ptr [{current_left_trigger}], dl",
+        "movzx edx, byte ptr [ecx+7]",  // state->Gamepad.bRightTrigger
+        "mov byte ptr [{current_right_trigger}], dl",
+        "movsx edx, word ptr [ecx+8]",  // state->Gamepad.sThumbLX
+        "mov word ptr [{current_thumb_lx}], dx",
+        "movsx edx, word ptr [ecx+10]",  // state->Gamepad.sThumbLY
+        "mov word ptr [{current_thumb_ly}], dx",
+        "movsx edx, word ptr [ecx+12]",  // state->Gamepad.sThumbRX
+        "mov word ptr [{current_thumb_rx}], dx",
+        "movsx edx, word ptr [ecx+14]",  // state->Gamepad.sThumbRY
+        "mov word ptr [{current_thumb_ry}], dx",
+        
+        "skip_track:",
+        
+        // Check if we should inject
+        "test eax, eax",  // Check if call succeeded (0 = success)
+        "jnz skip_inject",
+        
+        "cmp byte ptr [{inject_enabled}], 0",
+        "je skip_inject",
+        
+        // Get state pointer and inject
+        "mov ecx, dword ptr [esp+40]",  // state pointer
+        "test ecx, ecx",
+        "jz skip_inject",
+        
+        // Inject buttons (OR mode to combine with real input)
+        "movzx eax, word ptr [{inject_buttons}]",
+        "test ax, ax",
+        "jz skip_buttons",
+        "or word ptr [ecx+4], ax",
+        
+        "skip_buttons:",
+        // Inject triggers (replace mode - only if non-zero)
+        "movzx eax, byte ptr [{inject_left_trigger}]",
+        "test al, al",
+        "jz skip_left_trigger",
+        "mov byte ptr [ecx+6], al",
+        "skip_left_trigger:",
+        "movzx eax, byte ptr [{inject_right_trigger}]",
+        "test al, al",
+        "jz skip_right_trigger",
+        "mov byte ptr [ecx+7], al",
+        "skip_right_trigger:",
+        // Inject thumb sticks (replace mode - only if non-zero)
+        "movsx eax, word ptr [{inject_thumb_lx}]",
+        "test ax, ax",
+        "jz skip_thumb_lx",
+        "mov word ptr [ecx+8], ax",
+        "skip_thumb_lx:",
+        "movsx eax, word ptr [{inject_thumb_ly}]",
+        "test ax, ax",
+        "jz skip_thumb_ly",
+        "mov word ptr [ecx+10], ax",
+        "skip_thumb_ly:",
+        "movsx eax, word ptr [{inject_thumb_rx}]",
+        "test ax, ax",
+        "jz skip_thumb_rx",
+        "mov word ptr [ecx+12], ax",
+        "skip_thumb_rx:",
+        "movsx eax, word ptr [{inject_thumb_ry}]",
+        "test ax, ax",
+        "jz skip_thumb_ry",
+        "mov word ptr [ecx+14], ax",
+        "skip_thumb_ry:",
+        
+        "skip_inject:",
+        "popad",  // Restore all registers (including EAX with result)
+        "ret 8",  // stdcall cleanup (2 params * 4 bytes)
+        
+        "unhook_in_progress:",
+        "popad",
+        "mov eax, 0xFFFFFFFF",  // ERROR_DEVICE_NOT_CONNECTED - pretend controller is gone
+        "ret 8",
+        
+        "error_no_trampoline:",
+        "popad",
+        "mov eax, 0xFFFFFFFF",  // ERROR_DEVICE_NOT_CONNECTED
+        "ret 8",
+        
+        hook_enabled = sym XINPUT_HOOK_ENABLED,
+        trampoline = sym XINPUT_TRAMPOLINE,
+        inject_enabled = sym XINPUT_INJECT_ENABLED,
+        inject_buttons = sym XINPUT_INJECT_BUTTONS,
+        current_buttons = sym XINPUT_CURRENT_BUTTONS,
+        call_count = sym XINPUT_CALL_COUNT,
+        last_user_index = sym XINPUT_LAST_USER_INDEX,
+        inject_left_trigger = sym XINPUT_INJECT_LEFT_TRIGGER,
+        inject_right_trigger = sym XINPUT_INJECT_RIGHT_TRIGGER,
+        inject_thumb_lx = sym XINPUT_INJECT_THUMB_LX,
+        inject_thumb_ly = sym XINPUT_INJECT_THUMB_LY,
+        inject_thumb_rx = sym XINPUT_INJECT_THUMB_RX,
+        inject_thumb_ry = sym XINPUT_INJECT_THUMB_RY,
+        current_left_trigger = sym XINPUT_CURRENT_LEFT_TRIGGER,
+        current_right_trigger = sym XINPUT_CURRENT_RIGHT_TRIGGER,
+        current_thumb_lx = sym XINPUT_CURRENT_THUMB_LX,
+        current_thumb_ly = sym XINPUT_CURRENT_THUMB_LY,
+        current_thumb_rx = sym XINPUT_CURRENT_THUMB_RX,
+        current_thumb_ry = sym XINPUT_CURRENT_THUMB_RY,
+    );
+}
+
+// ============================================================================
+// END INPUT CAPTURE/INJECTION SYSTEM
+// ============================================================================
+
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 fn is_readable_addr(addr: usize, len: usize) -> bool {
     if addr == 0 || len == 0 {
@@ -643,6 +859,44 @@ fn normalize_stick_axis(raw: i16, deadzone: i16) -> f32 {
         let sign = if v.is_sign_negative() { -1.0 } else { 1.0 };
         let mag = (v.abs() - d) / (32767.0 - d);
         (mag * sign).clamp(-1.0, 1.0)
+    }
+}
+
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+fn resolve_xinput_get_state() -> Option<XInputGetStateFn> {
+    *XINPUT_GET_STATE_FN.get_or_init(|| unsafe {
+        let func_name = b"XInputGetState\0";
+        let module_candidates: [&[u8]; 4] = [
+            b"xinput1_4.dll\0",
+            b"xinput1_3.dll\0",
+            b"xinput9_1_0.dll\0",
+            b"xinput1_2.dll\0",
+        ];
+
+        for module_name in module_candidates {
+            let mut module = GetModuleHandleA(module_name.as_ptr());
+            if module == 0 {
+                module = LoadLibraryA(module_name.as_ptr());
+            }
+            if module == 0 {
+                continue;
+            }
+
+            if let Some(addr) = GetProcAddress(module, func_name.as_ptr()) {
+                let f: XInputGetStateFn = std::mem::transmute(addr as usize);
+                return Some(f);
+            }
+        }
+
+        None
+    })
+}
+
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
+fn xinput_get_state(user_idx: u32, state: &mut XINPUT_STATE) -> u32 {
+    match resolve_xinput_get_state() {
+        Some(f) => unsafe { f(user_idx, state as *mut XINPUT_STATE) },
+        None => 0x48F, // ERROR_DEVICE_NOT_CONNECTED
     }
 }
 
@@ -1554,6 +1808,330 @@ impl Ds1 {
         }
     }
 
+    // ============================================================================
+    // XINPUT HOOK PUBLIC API
+    // ============================================================================
+
+    /// Get current XInput buttons state (for UI display)
+    pub fn get_xinput_buttons(&self) -> u16 {
+        unsafe { XINPUT_CURRENT_BUTTONS }
+    }
+
+    /// Get XInput hook call count (for diagnostics)
+    pub fn get_xinput_call_count(&self) -> u32 {
+        unsafe { XINPUT_CALL_COUNT }
+    }
+
+    /// Get last controller index that was polled
+    pub fn get_xinput_last_user_index(&self) -> u32 {
+        unsafe { XINPUT_LAST_USER_INDEX }
+    }
+
+    /// Enable XInput hook for button injection at Windows API level
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn enable_xinput_hook(&mut self) -> bool {
+        unsafe {
+            use windows_sys::Win32::System::LibraryLoader::{
+                GetModuleHandleA, GetProcAddress, LoadLibraryA,
+            };
+            use windows_sys::Win32::System::Memory::{VirtualAlloc, MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE};
+
+            // Win11-era XInput binaries and thunks can make this inline hook unstable.
+            // Keep it opt-in so controller support does not crash the game by default.
+            let allow_inline_hook = std::env::var("PTDE_UNSAFE_XINPUT_INLINE_HOOK")
+                .ok()
+                .map(|v| {
+                    let s = v.trim().to_ascii_lowercase();
+                    s == "1" || s == "true" || s == "yes" || s == "on"
+                })
+                .unwrap_or(false);
+            if !allow_inline_hook {
+                eprintln!(
+                    "[XINPUT HOOK] Inline hook is disabled by default (stability safeguard). Set PTDE_UNSAFE_XINPUT_INLINE_HOOK=1 to force-enable."
+                );
+                return false;
+            }
+            
+            if XINPUT_HOOK_ENABLED {
+                eprintln!("[XINPUT HOOK] Already enabled");
+                return true;
+            }
+
+            eprintln!("[XINPUT HOOK] Installing XInputGetState hook...");
+
+            // Get XInputGetState address from known XInput variants.
+            let func_name = b"XInputGetState\0";
+
+            let module_candidates: [(&str, &[u8]); 3] = [
+                ("xinput1_4.dll", b"xinput1_4.dll\0"),
+                ("xinput1_3.dll", b"xinput1_3.dll\0"),
+                ("xinput9_1_0.dll", b"xinput9_1_0.dll\0"),
+            ];
+
+            let mut module = 0;
+            let mut module_name = "unknown";
+            for (name, bytes) in module_candidates {
+                let mut h = GetModuleHandleA(bytes.as_ptr());
+                if h == 0 {
+                    h = LoadLibraryA(bytes.as_ptr());
+                }
+                if h != 0 {
+                    module = h;
+                    module_name = name;
+                    break;
+                }
+            }
+
+            if module == 0 {
+                eprintln!("[XINPUT HOOK] Failed to load any XInput module (xinput1_4/xinput1_3/xinput9_1_0)");
+                return false;
+            }
+            
+            let xinput_addr = GetProcAddress(module, func_name.as_ptr());
+            if xinput_addr.is_none() {
+                eprintln!("[XINPUT HOOK] Failed to get XInputGetState address");
+                return false;
+            }
+            
+            let xinput_fn_ptr = xinput_addr.unwrap() as usize;
+            eprintln!(
+                "[XINPUT HOOK] XInputGetState at 0x{:08X} from {}",
+                xinput_fn_ptr,
+                module_name
+            );
+            
+            // Read and log first bytes for debugging
+            eprint!("[XINPUT HOOK] Original bytes: ");
+            for i in 0..12 {
+                eprint!("{:02X} ", std::ptr::read_volatile((xinput_fn_ptr + i) as *const u8));
+            }
+            eprintln!();
+            
+            // Check if already hooked (starts with 0xE9 = JMP)
+            let first_byte = std::ptr::read_volatile(xinput_fn_ptr as *const u8);
+            if first_byte == 0xE9 {
+                eprintln!("[XINPUT HOOK] Warning: Function appears already hooked");
+            }
+            
+            // Save original bytes (12 bytes to be safe for instruction boundaries)
+            for i in 0..7 {
+                XINPUT_ORIG_BYTES[i] = std::ptr::read_volatile((xinput_fn_ptr + i) as *const u8);
+            }
+            
+            // Allocate trampoline (40 bytes: plenty for original bytes + JMP back)
+            let trampoline = VirtualAlloc(
+                std::ptr::null(),
+                40,
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_EXECUTE_READWRITE,
+            ) as usize;
+            
+            if trampoline == 0 {
+                eprintln!("[XINPUT HOOK] Failed to allocate trampoline");
+                return false;
+            }
+            
+            eprintln!("[XINPUT HOOK] Trampoline at 0x{:08X}", trampoline);
+            
+            // Build trampoline: copy 12 bytes + absolute JMP to original+12
+            let mut tramp_offset = 0;
+            
+            // Copy first 12 bytes (should be enough for most instruction patterns)
+            for i in 0..12 {
+                let byte = std::ptr::read_volatile((xinput_fn_ptr + i) as *const u8);
+                std::ptr::write_volatile((trampoline + tramp_offset) as *mut u8, byte);
+                tramp_offset += 1;
+            }
+            
+            // Add absolute JMP to original+12 (avoids our 5-byte hook)
+            // JMP [addr]: FF 25 [addr with 32-bit address]
+            std::ptr::write_volatile((trampoline + tramp_offset) as *mut u8, 0xE9); // JMP rel32
+            tramp_offset += 1;
+            let jmp_offset = (xinput_fn_ptr + 12) as i32 - (trampoline + tramp_offset + 4) as i32;
+            std::ptr::write_volatile((trampoline + tramp_offset) as *mut i32, jmp_offset);
+            
+            eprint!("[XINPUT HOOK] Trampoline bytes: ");
+            for i in 0..20 {
+                eprint!("{:02X} ", std::ptr::read_volatile((trampoline + i) as *const u8));
+            }
+            eprintln!();
+            
+            XINPUT_TRAMPOLINE = trampoline;
+            XINPUT_HOOK_ADDR = xinput_fn_ptr;
+            
+            // Install hook: JMP to xinput_hook (5 bytes) + NOPs (2 bytes for alignment)
+            let hook_addr = xinput_hook as usize;
+            let jmp_rel = hook_addr as i32 - (xinput_fn_ptr + 5) as i32;
+            
+            eprintln!("[XINPUT HOOK] Hook function at 0x{:08X}, JMP offset: 0x{:08X}", hook_addr, jmp_rel);
+            
+            let mut patch = [0u8; 7];
+            patch[0] = 0xE9; // JMP
+            patch[1..5].copy_from_slice(&jmp_rel.to_le_bytes());
+            patch[5] = 0x90; // NOP
+            patch[6] = 0x90; // NOP
+            
+            if !write_exec_patch(xinput_fn_ptr, &patch) {
+                eprintln!("[XINPUT HOOK] Failed to write hook");
+                VirtualFree(trampoline as *mut c_void, 0, 0x8000);
+                return false;
+            }
+            
+            // Verify patch was written
+            eprint!("[XINPUT HOOK] Patched bytes: ");
+            for i in 0..7 {
+                eprint!("{:02X} ", std::ptr::read_volatile((xinput_fn_ptr + i) as *const u8));
+            }
+            eprintln!();
+            
+            XINPUT_HOOK_ENABLED = true;
+            eprintln!("[XINPUT HOOK] ✓ Installed successfully");
+            true
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn enable_xinput_hook(&mut self) -> bool {
+        false
+    }
+
+    /// Disable XInput hook
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn disable_xinput_hook(&mut self) -> bool {
+        unsafe {
+            use windows_sys::Win32::System::Memory::VirtualFree;
+            use windows_sys::Win32::System::Threading::Sleep;
+            
+            if !XINPUT_HOOK_ENABLED {
+                return true;
+            }
+            
+            eprintln!("[XINPUT HOOK] Removing hook...");
+            
+            // Disable injection first to prevent any modifications during unhook
+            XINPUT_INJECT_ENABLED = 0;
+            XINPUT_INJECT_BUTTONS = 0;
+            XINPUT_INJECT_LEFT_TRIGGER = 0;
+            XINPUT_INJECT_RIGHT_TRIGGER = 0;
+            XINPUT_INJECT_THUMB_LX = 0;
+            XINPUT_INJECT_THUMB_LY = 0;
+            XINPUT_INJECT_THUMB_RX = 0;
+            XINPUT_INJECT_THUMB_RY = 0;
+            
+            // Mark as disabled BEFORE restoring bytes to prevent hook execution
+            XINPUT_HOOK_ENABLED = false;
+            
+            // Give any in-flight calls time to complete (10ms should be plenty)
+            Sleep(10);
+            
+            // Restore original bytes
+            if !write_exec_patch(XINPUT_HOOK_ADDR, &XINPUT_ORIG_BYTES) {
+                eprintln!("[XINPUT HOOK] Failed to restore original bytes");
+                // Don't return false - still try to clean up
+            }
+            
+            // Wait a bit more to ensure no calls are in progress
+            Sleep(10);
+            
+            // Free trampoline
+            if XINPUT_TRAMPOLINE != 0 {
+                let result = VirtualFree(XINPUT_TRAMPOLINE as *mut c_void, 0, 0x8000); // MEM_RELEASE
+                if result == 0 {
+                    eprintln!("[XINPUT HOOK] Warning: VirtualFree failed");
+                }
+                XINPUT_TRAMPOLINE = 0;
+            }
+            
+            XINPUT_HOOK_ADDR = 0;
+            
+            eprintln!("[XINPUT HOOK] ✓ Removed successfully");
+            true
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn disable_xinput_hook(&mut self) -> bool {
+        false
+    }
+
+    /// Set XInput injection
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn set_xinput_injection(&mut self, enabled: bool) {
+        unsafe {
+            XINPUT_INJECT_ENABLED = if enabled { 1 } else { 0 };
+            if !enabled {
+                XINPUT_INJECT_BUTTONS = 0;
+                XINPUT_INJECT_LEFT_TRIGGER = 0;
+                XINPUT_INJECT_RIGHT_TRIGGER = 0;
+                XINPUT_INJECT_THUMB_LX = 0;
+                XINPUT_INJECT_THUMB_LY = 0;
+                XINPUT_INJECT_THUMB_RX = 0;
+                XINPUT_INJECT_THUMB_RY = 0;
+            }
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn set_xinput_injection(&mut self, _enabled: bool) {}
+
+    /// Inject specific XInput buttons (A = 0x1000, B = 0x2000, etc.)
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn inject_xinput_buttons(&mut self, buttons: u16) {
+        unsafe {
+            XINPUT_INJECT_BUTTONS = buttons;
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn inject_xinput_buttons(&mut self, _buttons: u16) {}
+
+    /// Get current analog stick and trigger values
+    pub fn get_xinput_triggers(&self) -> (u8, u8) {
+        unsafe { (XINPUT_CURRENT_LEFT_TRIGGER, XINPUT_CURRENT_RIGHT_TRIGGER) }
+    }
+
+    pub fn get_xinput_left_stick(&self) -> (i16, i16) {
+        unsafe { (XINPUT_CURRENT_THUMB_LX, XINPUT_CURRENT_THUMB_LY) }
+    }
+
+    pub fn get_xinput_right_stick(&self) -> (i16, i16) {
+        unsafe { (XINPUT_CURRENT_THUMB_RX, XINPUT_CURRENT_THUMB_RY) }
+    }
+
+    /// Inject analog stick and trigger values
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn inject_xinput_triggers(&mut self, left: u8, right: u8) {
+        unsafe {
+            XINPUT_INJECT_LEFT_TRIGGER = left;
+            XINPUT_INJECT_RIGHT_TRIGGER = right;
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn inject_xinput_triggers(&mut self, _left: u8, _right: u8) {}
+
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn inject_xinput_left_stick(&mut self, x: i16, y: i16) {
+        unsafe {
+            XINPUT_INJECT_THUMB_LX = x;
+            XINPUT_INJECT_THUMB_LY = y;
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn inject_xinput_left_stick(&mut self, _x: i16, _y: i16) {}
+
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    pub fn inject_xinput_right_stick(&mut self, x: i16, y: i16) {
+        unsafe {
+            XINPUT_INJECT_THUMB_RX = x;
+            XINPUT_INJECT_THUMB_RY = y;
+        }
+    }
+
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    pub fn inject_xinput_right_stick(&mut self, _x: i16, _y: i16) {}
+
     #[cfg(all(target_os = "windows", target_arch = "x86"))]
     pub fn tick_freecam_mode_hotkey(&mut self) {
         unsafe {
@@ -1568,7 +2146,7 @@ impl Ds1 {
 
             for user_idx in 0..4u32 {
                 let mut state: XINPUT_STATE = std::mem::zeroed();
-                if XInputGetState(user_idx, &mut state) == 0 {
+                if xinput_get_state(user_idx, &mut state) == 0 {
                     let buttons = state.Gamepad.wButtons;
                     let l3 = (buttons & XINPUT_GAMEPAD_LEFT_THUMB) != 0;
                     let r3 = (buttons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
@@ -1724,12 +2302,12 @@ impl Ds1 {
 
             let mut state = std::mem::zeroed::<XINPUT_STATE>();
             let mut found = false;
-            if FREECAM_ACTIVE_PAD >= 0 && XInputGetState(FREECAM_ACTIVE_PAD as u32, &mut state) == 0 {
+            if FREECAM_ACTIVE_PAD >= 0 && xinput_get_state(FREECAM_ACTIVE_PAD as u32, &mut state) == 0 {
                 found = true;
                 FREECAM_DEBUG_XINPUT_PAD = FREECAM_ACTIVE_PAD;
             } else {
                 for user_idx in 0..4u32 {
-                    if XInputGetState(user_idx, &mut state) == 0 {
+                    if xinput_get_state(user_idx, &mut state) == 0 {
                         found = true;
                         FREECAM_ACTIVE_PAD = user_idx as i32;
                         FREECAM_DEBUG_XINPUT_PAD = user_idx as i32;

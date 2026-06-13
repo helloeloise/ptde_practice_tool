@@ -32,6 +32,7 @@ pub fn get_ds1_instance() -> Arc<Mutex<Ds1>> {
 pub struct RenderLoop {
     config: Arc<Mutex<Config>>,
     no_stamina_consume: bool,
+    infinite_stamina: bool,
     infinite_magic: bool,
     infinite_goods: bool,
     player_hide: bool,
@@ -102,6 +103,7 @@ impl RenderLoop {
             config: Arc::new(Mutex::new(config)),
             resolved_keybinds,
             no_stamina_consume: false,
+            infinite_stamina: false,
             infinite_magic: false,
             infinite_goods: false,
             player_hide: false,
@@ -740,6 +742,9 @@ impl ImguiRenderLoop for RenderLoop {
                         ds1.set_no_stam_consume();
                     }
 
+                    ui.same_line();
+                    ui.checkbox("infinite stamina", &mut self.infinite_stamina);
+
                     if ui.checkbox("infinite magic", &mut self.infinite_magic) {
                         ds1.set_all_no_magic_quantity_consume();
                     }
@@ -1345,6 +1350,7 @@ impl RenderLoop {
     fn sync_flags_if_needed(&mut self, ds1: &mut Ds1) {
         // Only sync flags every 3 seconds and only if at least one flag is enabled
         let any_flag_enabled = self.no_stamina_consume
+            || self.infinite_stamina
             || self.infinite_magic
             || self.infinite_goods
             || self.player_hide
@@ -1374,6 +1380,13 @@ impl RenderLoop {
         // Batch all flag writes together
         if self.no_stamina_consume {
             ds1.set_no_stam_consume_to(true);
+        }
+        if self.infinite_stamina {
+            let max_stamina = ds1
+                .chr_data_1
+                .read_i32_rel(Some(CharData1::MAX_STAMINA));
+            ds1.chr_data_1
+                .write_i32_rel(Some(CharData1::STAMINA), max_stamina.max(0));
         }
         if self.infinite_magic {
             ds1.set_all_no_magic_quantity_consume_to(true);
@@ -1440,5 +1453,15 @@ impl RenderLoop {
             self.free_cam = ds1.get_free_cam();
         }
         self.last_flag_sync_time = std::time::Instant::now();
+    }
+}
+
+impl Drop for RenderLoop {
+    fn drop(&mut self) {
+        // Clean up XInput hook before DLL unload to prevent crashes
+        let instance = get_ds1_instance();
+        let mut ds1 = instance.lock().unwrap();
+        ds1.disable_xinput_hook();
+        eprintln!("[CLEANUP] XInput hook disabled before unload");
     }
 }
